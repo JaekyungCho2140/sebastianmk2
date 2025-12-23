@@ -12,7 +12,7 @@ build-python/
 # PyInstaller
 sebastian/build/
 sebastian/dist/
-*.spec
+legacy/**/*.spec
 
 # Virtual Environment
 venv/

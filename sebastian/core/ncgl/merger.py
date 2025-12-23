@@ -2,7 +2,6 @@ import os
 import time
 import logging
 import pandas as pd
-import numpy as np
 from concurrent.futures import ProcessPoolExecutor
 
 
@@ -60,8 +59,7 @@ def merge_ncgl(folder_path: str, date: str, milestone: str, progress_queue) -> N
                 result_df[col] = result_df[col].apply(lambda x: 'None' if pd.isna(x) else x)
 
         # NaN, inf, -inf를 모두 빈 문자열로 변환 (xlsxwriter 오류 방지)
-        import numpy as np
-        result_df = result_df.replace([np.nan, np.inf, -np.inf], '', regex=False)
+        result_df = result_df.replace([float('nan'), float('inf'), float('-inf')], '', regex=False)
 
         # 열 순서 재정렬
         result_df = result_df[['Key', 'Source', 'Target_EN', 'Target_CT', 'Target_CS',
