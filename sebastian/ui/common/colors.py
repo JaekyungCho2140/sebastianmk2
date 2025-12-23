@@ -1,0 +1,36 @@
+"""
+Sebastian UI 색상 시스템
+
+wireframe 기준 색상 정의
+"""
+
+# 프로젝트별 Primary
+M4GL_DIALOGUE = "#4CAF50"
+M4GL_STRING = "#2196F3"
+NCGL = "#00897B"
+LYGL = "#7B1FA2"
+
+# 배경
+BG_PRIMARY = "#FFFFFF"
+BG_SECONDARY = "#F5F5F5"
+BG_TERTIARY = "#EEEEEE"
+
+# 텍스트
+TEXT_PRIMARY = "#212121"
+TEXT_SECONDARY = "#757575"
+TEXT_DISABLED = "#9E9E9E"
+
+# 테두리
+BORDER = "#E0E0E0"
+BORDER_FOCUS = "#BDBDBD"
+
+# 상태
+SUCCESS = "#4CAF50"
+ERROR = "#F44336"
+WARNING = "#FF9800"
+INFO = "#2196F3"
+
+# 상태별 배경
+ERROR_BG = "#FFEBEE"
+WARNING_BG = "#FFF3E0"
+SUCCESS_BG = "#E8F5E9"
