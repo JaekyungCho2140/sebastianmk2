@@ -20,6 +20,11 @@ from .legacy_diff import (
     create_overview_sheet,
     create_language_sheet,
 )
+from .status_check import (
+    status_check,
+    check_status_consistency,
+    create_status_check_output,
+)
 
 __all__ = [
     # Merge
@@ -40,4 +45,8 @@ __all__ = [
     'compare_language_files',
     'create_overview_sheet',
     'create_language_sheet',
+    # Status Check
+    'status_check',
+    'check_status_consistency',
+    'create_status_check_output',
 ]

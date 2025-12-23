@@ -9,6 +9,7 @@ from .lygl_worker import (
     LYGLSplitWorker,
     LYGLBatchWorker,
     LYGLDiffWorker,
+    LYGLStatusCheckWorker,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     'LYGLSplitWorker',
     'LYGLBatchWorker',
     'LYGLDiffWorker',
+    'LYGLStatusCheckWorker',
 ]

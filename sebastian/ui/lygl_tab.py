@@ -16,8 +16,8 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
 
 from .common import *
-from .wizards import MergeWizard, SplitWizard, BatchWizard, DiffWizard
-from workers.lygl_worker import LYGLMergeWorker, LYGLSplitWorker, LYGLBatchWorker, LYGLDiffWorker
+from .wizards import MergeWizard, SplitWizard, BatchWizard, DiffWizard, StatusCheckWizard
+from workers.lygl_worker import LYGLMergeWorker, LYGLSplitWorker, LYGLBatchWorker, LYGLDiffWorker, LYGLStatusCheckWorker
 
 
 class LYGLTab(QWidget):
@@ -28,6 +28,7 @@ class LYGLTab(QWidget):
     split_requested = pyqtSignal()
     batch_requested = pyqtSignal()
     diff_requested = pyqtSignal()
+    status_check_requested = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -40,6 +41,7 @@ class LYGLTab(QWidget):
         self.split_requested.connect(self._show_split_wizard)
         self.batch_requested.connect(self._show_batch_wizard)
         self.diff_requested.connect(self._show_diff_wizard)
+        self.status_check_requested.connect(self._show_status_check_wizard)
 
     def _show_merge_wizard(self):
         """Merge 위저드 표시"""
@@ -87,6 +89,18 @@ class LYGLTab(QWidget):
                 data['output']
             )
             self._run_worker(self.worker, "LY/GL Diff")
+
+    def _show_status_check_wizard(self):
+        """Status Check 위저드 표시"""
+        wizard = StatusCheckWizard(self)
+        if wizard.exec():
+            data = wizard.get_data()
+            # Worker 실행 (파일 리스트와 출력 경로 전달)
+            self.worker = LYGLStatusCheckWorker(
+                file_paths=data['files'],  # 파일 경로 리스트
+                output_path=str(data['output'])
+            )
+            self._run_worker(self.worker, "LY/GL Status Check")
 
     def _run_worker(self, worker, title: str):
         """Worker 실행 (공통)"""
@@ -180,6 +194,47 @@ class LYGLTab(QWidget):
         grid.addWidget(diff_btn, 1, 1)
 
         layout.addLayout(grid)
+
+        # Status Check 버튼 (중앙)
+        status_check_layout = QVBoxLayout()
+        status_check_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        status_check_layout.setSpacing(8)
+
+        status_check_btn = QPushButton("Status Check")
+        status_check_btn.setFixedSize(120, 40)
+        status_check_btn.setFont(QFont("Pretendard", 11, QFont.Weight.Bold))
+        status_check_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        status_check_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: qlineargradient(
+                    x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #BA68C8,
+                    stop:1 #9C27B0
+                );
+                color: white;
+                border: 1px solid #9C27B0;
+                border-radius: 8px;
+                padding: 8px;
+            }}
+            QPushButton:hover {{
+                background: qlineargradient(
+                    x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #CE93D8,
+                    stop:1 #BA68C8
+                );
+            }}
+        """)
+        status_check_btn.clicked.connect(self.status_check_requested.emit)
+        status_check_layout.addWidget(status_check_btn)
+
+        # 설명 레이블
+        status_desc = QLabel("언어별 Status 통일 검증")
+        status_desc.setFont(QFont("Pretendard", 10))
+        status_desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        status_desc.setStyleSheet(f"color: {TEXT_SECONDARY};")
+        status_check_layout.addWidget(status_desc)
+
+        layout.addLayout(status_check_layout)
         layout.addStretch()
 
         self.setLayout(layout)

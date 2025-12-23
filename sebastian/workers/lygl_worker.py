@@ -234,3 +234,87 @@ class LYGLDiffWorker(QThread):
         """진행 상황 콜백"""
         self.progress_updated.emit(percent)
         self.status_updated.emit(message)
+
+
+class LYGLStatusCheckWorker(QThread):
+    """LY/GL Status Check 작업 Worker"""
+
+    # Signals
+    progress_updated = pyqtSignal(int)
+    status_updated = pyqtSignal(str)
+    completed = pyqtSignal(str)
+    error_occurred = pyqtSignal(str)
+
+    def __init__(self, file_paths: list, output_path: str):
+        super().__init__()
+        self.file_paths = file_paths  # 파일 경로 리스트
+        self.output_path = output_path
+
+    def run(self):
+        """작업 실행"""
+        try:
+            from pathlib import Path
+            from core.lygl import status_check
+
+            self.status_updated.emit("언어 파일 분석 중...")
+            self.progress_updated.emit(3)
+
+            # 파일명에서 언어 코드 자동 인식
+            language_files = {}
+            for file_path in self.file_paths:
+                filename = Path(file_path).stem
+                
+                # 파일명에서 언어 코드 추출
+                if '_EN' in filename or '_EN.' in filename:
+                    language_files['EN'] = Path(file_path)
+                elif '_CT' in filename or '_CT.' in filename:
+                    language_files['CT'] = Path(file_path)
+                elif '_CS' in filename or '_CS.' in filename:
+                    language_files['CS'] = Path(file_path)
+                elif '_JA' in filename or '_JA.' in filename:
+                    language_files['JA'] = Path(file_path)
+                elif '_TH' in filename or '_TH.' in filename:
+                    language_files['TH'] = Path(file_path)
+                elif '_PT-BR' in filename or '_PT-BR.' in filename:
+                    language_files['PT-BR'] = Path(file_path)
+                elif '_RU' in filename or '_RU.' in filename:
+                    language_files['RU'] = Path(file_path)
+
+            # 언어 파일 확인
+            if len(language_files) != 7:
+                missing = set(['EN', 'CT', 'CS', 'JA', 'TH', 'PT-BR', 'RU']) - set(language_files.keys())
+                raise Exception(
+                    f"7개 언어 파일이 필요합니다.\n\n"
+                    f"인식된 파일: {len(language_files)}개\n"
+                    f"누락된 언어: {', '.join(missing)}\n\n"
+                    f"파일명에 언어 코드가 포함되어야 합니다.\n"
+                    f"(예: 251201_EN.xlsx, 251201_CT.xlsx)"
+                )
+
+            self.status_updated.emit(f"인식된 언어: {', '.join(language_files.keys())}")
+            self.progress_updated.emit(5)
+
+            # status_check 호출
+            inconsistency_count = status_check(
+                files=language_files,
+                output_path=Path(self.output_path),
+                progress_callback=self._progress_callback
+            )
+
+            self.progress_updated.emit(100)
+
+            # 결과 메시지
+            if inconsistency_count == 0:
+                message = "Status 불일치가 없습니다!\n모든 언어 파일의 Status가 일치합니다."
+            else:
+                message = f"Status 불일치 발견: {inconsistency_count}개 키\n\n결과 파일: {Path(self.output_path).name}"
+
+            self.completed.emit(message)
+
+        except Exception as e:
+            self.error_occurred.emit(f"Status Check 실패: {str(e)}")
+
+    def _progress_callback(self, percent: int, message: str):
+        """진행 상황 콜백"""
+        self.progress_updated.emit(percent)
+        self.status_updated.emit(message)
