@@ -54,11 +54,15 @@ def merge_dialogue(folder_path: str, progress_queue) -> None:
 
         # 데이터 읽기
         cinematic_data = read_excel_file(cinematic_path, sheet_name=1, header_row=1, skip_rows=9)
+        # 글로벌 OnOFF=1 필터링 (G열, 인덱스 6)
+        cinematic_data = cinematic_data[cinematic_data.iloc[:, 6] == 1]
         progress_queue.put(20)
         progress_queue.put("처리된 파일:1")
 
         progress_queue.put("파일:SMALLTALK_DIALOGUE.xlsm")
         smalltalk_data = read_excel_file(smalltalk_path, sheet_name=1, header_row=1, skip_rows=4)
+        # 글로벌 OnOFF=1 필터링 (G열, 인덱스 6)
+        smalltalk_data = smalltalk_data[smalltalk_data.iloc[:, 6] == 1]
         progress_queue.put(40)
         progress_queue.put("처리된 파일:2")
 

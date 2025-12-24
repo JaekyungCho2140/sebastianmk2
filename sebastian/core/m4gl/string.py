@@ -97,6 +97,8 @@ def merge_string(folder_path: str, progress_queue) -> None:
 
             progress_queue.put(f"파일:{file}")
             data = read_excel_file(file_path, sheet_name=1, header_row=header_rows[file], skip_rows=start_rows[file])
+            # 글로벌 OnOFF=1 필터링 (G열, 인덱스 6)
+            data = data[data.iloc[:, 6] == 1]
 
             # Table Name 열 채우기
             table_name = file.replace(".xlsm", "")
