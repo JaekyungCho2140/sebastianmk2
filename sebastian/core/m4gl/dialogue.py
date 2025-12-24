@@ -170,6 +170,11 @@ def merge_dialogue(folder_path: str, progress_queue) -> None:
         progress_queue.put(80)
         progress_queue.put("파일:결과 파일 저장 중...")
 
+        # String ID를 정수로 변환 (소수점 제거)
+        result_df['String ID'] = pd.to_numeric(result_df['String ID'], errors='coerce').fillna(0).astype('int64')
+        # Table/ID 재생성 (정수 기반)
+        result_df['Table/ID'] = result_df['Table Name'] + '/' + result_df['String ID'].astype(str)
+
         # 출력 파일 이름 설정
         date_str = datetime.datetime.now().strftime('%m%d')
         output_file = f'{date_str}_MIR4_MASTER_DIALOGUE.xlsx'

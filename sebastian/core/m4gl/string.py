@@ -125,6 +125,11 @@ def merge_string(folder_path: str, progress_queue) -> None:
         progress_queue.put("단계:2/2")
         progress_queue.put("파일:결과 파일 저장 중...")
 
+        # String ID를 정수로 변환 (소수점 제거)
+        result_df['String ID'] = pd.to_numeric(result_df['String ID'], errors='coerce').fillna(0).astype('int64')
+        # Table/ID 재생성 (정수 기반)
+        result_df['Table/ID'] = result_df['Table Name'] + '/' + result_df['String ID'].astype(str)
+
         # 7번째 열(인덱스 6)이 빈 셀(NaN) 또는 0 또는 '미사용'인 행 제거
         result_df = result_df[~(pd.isna(result_df.iloc[:, 6]) | result_df.iloc[:, 6].isin([0, '미사용']))]
 
