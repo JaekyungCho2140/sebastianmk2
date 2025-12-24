@@ -158,7 +158,7 @@ class NCGLTab(QWidget):
         self.execute_btn.setFont(QFont("Pretendard", 14, QFont.Weight.DemiBold))
         self.execute_btn.setEnabled(False)
         self.execute_btn.clicked.connect(self._execute)
-        self._update_execute_button_style()
+        # 스타일은 QSS에서 자동 적용
         execute_layout.addWidget(self.execute_btn)
 
         layout.addLayout(execute_layout)
@@ -199,30 +199,20 @@ class NCGLTab(QWidget):
             """)
 
     def _update_input_style(self, input_field: QLineEdit, is_valid: bool | None):
-        """입력 필드 스타일 업데이트"""
+        """입력 필드 스타일 업데이트 - v2 미니멀 디자인"""
         if is_valid is None:
-            # 입력 전
-            border_color = BORDER
+            # 입력 전 - 기본 스타일 (QSS 적용)
+            input_field.setObjectName("")
         elif is_valid:
-            # 유효
-            border_color = SUCCESS
+            # 유효 - validInput 스타일
+            input_field.setObjectName("validInput")
         else:
-            # 무효
-            border_color = ERROR
+            # 무효 - invalidInput 스타일
+            input_field.setObjectName("invalidInput")
 
-        input_field.setStyleSheet(f"""
-            QLineEdit {{
-                background-color: #FFFFFF;
-                border: 2px solid {border_color};
-                border-radius: 4px;
-                padding: 0 12px;
-                color: {TEXT_PRIMARY};
-            }}
-            QLineEdit:focus {{
-                border-color: {NCGL};
-                box-shadow: 0 0 0 3px rgba(0, 137, 123, 0.1);
-            }}
-        """)
+        # 스타일 다시 적용
+        input_field.style().unpolish(input_field)
+        input_field.style().polish(input_field)
 
     def _select_folder(self):
         """폴더 선택"""
@@ -245,33 +235,9 @@ class NCGLTab(QWidget):
 
         enabled = date_valid and milestone_valid and folder_valid
         self.execute_btn.setEnabled(enabled)
-        self._update_execute_button_style()
+        # 스타일은 QSS에서 자동 처리됨 (enabled/disabled 상태)
 
-    def _update_execute_button_style(self):
-        """실행 버튼 스타일 업데이트"""
-        if self.execute_btn.isEnabled():
-            style = f"""
-                QPushButton {{
-                    background-color: {NCGL};
-                    border: none;
-                    border-radius: 8px;
-                    color: #FFFFFF;
-                }}
-                QPushButton:hover {{
-                    background-color: {NCGL};
-                    opacity: 0.9;
-                }}
-            """
-        else:
-            style = f"""
-                QPushButton {{
-                    background-color: {BG_SECONDARY};
-                    border: none;
-                    border-radius: 8px;
-                    color: {TEXT_DISABLED};
-                }}
-            """
-        self.execute_btn.setStyleSheet(style)
+
 
     def _execute(self):
         """실행"""
@@ -291,6 +257,7 @@ class NCGLTab(QWidget):
             self.worker.files_count_updated.connect(
                 lambda count: self.progress_dialog.update_files(count, 8)
             )
+            self.worker.time_updated.connect(self.progress_dialog.update_time)
             self.worker.completed.connect(self._on_completed)
             self.worker.error_occurred.connect(self._on_error)
 

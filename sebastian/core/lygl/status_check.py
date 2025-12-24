@@ -121,6 +121,8 @@ def check_status_consistency(
     예외:
         - 7개 파일이 아니면 StatusCheckError
     """
+    import time
+    start_time = time.time()
     # 1. 파일 개수 검증
     if len(files) != 7:
         raise StatusCheckError(
@@ -146,7 +148,7 @@ def check_status_consistency(
     for idx, (lang, file_path) in enumerate(files.items()):
         if progress_callback:
             percent = 10 + int((idx + 1) / 7 * 30)
-            progress_callback(percent, f"{lang} 파일 읽기 중...")
+            progress_callback(percent, f"{lang} 파일 읽기 중 ({idx + 1}/7)...")
 
         all_data[lang] = read_language_file(file_path)
 
@@ -186,8 +188,10 @@ def check_status_consistency(
                 'is_consistent': False
             })
 
+    # 소요 시간 계산
+    elapsed_time = time.time() - start_time
     if progress_callback:
-        progress_callback(90, "비교 완료")
+        progress_callback(90, f"비교 완료. 소요 시간: {int(elapsed_time)}초")
 
     return inconsistencies, statistics
 

@@ -19,6 +19,7 @@ class M4GLWorker(QThread):
     step_updated = pyqtSignal(str)  # 단계 정보
     file_updated = pyqtSignal(str)  # 처리 중 파일
     files_count_updated = pyqtSignal(int)  # 처리된 파일 수
+    time_updated = pyqtSignal(int, int)  # (경과 시간, 남은 시간)
     completed = pyqtSignal(str)  # 완료 메시지
     error_occurred = pyqtSignal(str)  # 에러 메시지
 
@@ -87,6 +88,10 @@ class M4GLWorker(QThread):
                     else:
                         # 일반 상태 메시지
                         self.status_updated.emit(msg)
+
+                elif isinstance(msg, tuple) and len(msg) == 3 and msg[0] == "time":
+                    # 시간 정보 (경과, 남은 시간)
+                    self.time_updated.emit(msg[1], msg[2])
 
                 elif isinstance(msg, tuple) and msg[0] == "error":
                     # 에러 메시지

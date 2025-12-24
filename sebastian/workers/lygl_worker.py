@@ -16,6 +16,9 @@ class LYGLMergeWorker(QThread):
     # Signals
     progress_updated = pyqtSignal(int)
     status_updated = pyqtSignal(str)
+    step_updated = pyqtSignal(str)
+    files_count_updated = pyqtSignal(int, int)
+    time_updated = pyqtSignal(int, int)  # (경과 시간, 남은 시간)
     completed = pyqtSignal(str)
     error_occurred = pyqtSignal(str)
 
@@ -23,14 +26,20 @@ class LYGLMergeWorker(QThread):
         super().__init__()
         self.file_paths = file_paths
         self.output_path = output_path
+        self.start_time = None
 
     def run(self):
         """작업 실행"""
+        import time
+        self.start_time = time.time()
+        
         try:
             from pathlib import Path
             import datetime
 
             self.status_updated.emit("7개 언어 파일 병합 시작...")
+            self.step_updated.emit("1/2")
+            self.files_count_updated.emit(0, 7)
             self.progress_updated.emit(10)
 
             # 파일 경로를 딕셔너리로 변환
@@ -63,15 +72,35 @@ class LYGLMergeWorker(QThread):
             merge_files(language_files, str(output_file), progress_callback=self._progress_callback)
 
             self.progress_updated.emit(100)
-            self.completed.emit(f"파일이 {output_file.name}로 저장되었습니다.")
+            
+            # 소요 시간 계산
+            elapsed_time = int(time.time() - self.start_time)
+            self.completed.emit(f"파일이 {output_file.name}로 저장되었습니다. 소요 시간: {elapsed_time}초")
 
         except Exception as e:
             self.error_occurred.emit(f"Merge 실패: {str(e)}")
 
     def _progress_callback(self, percent: int, message: str):
         """진행 상황 콜백"""
-        self.progress_updated.emit(percent)
+        import time
+        import re
+        
+        if percent is not None:
+            self.progress_updated.emit(percent)
         self.status_updated.emit(message)
+        
+        # 메시지에서 파일 처리 정보 추출 (예: "CT 파일 처리 중 (2/7)...")
+        match = re.search(r'\((\d+)/(\d+)\)', message)
+        if match:
+            current = int(match.group(1))
+            total = int(match.group(2))
+            self.files_count_updated.emit(current, total)
+        
+        # 시간 계산 및 전송
+        if hasattr(self, 'start_time') and self.start_time and percent and percent > 0:
+            elapsed = int(time.time() - self.start_time)
+            remaining = int((elapsed / percent) * (100 - percent)) if percent < 100 else 0
+            self.time_updated.emit(elapsed, remaining)
 
 
 class LYGLSplitWorker(QThread):
@@ -80,6 +109,9 @@ class LYGLSplitWorker(QThread):
     # Signals
     progress_updated = pyqtSignal(int)
     status_updated = pyqtSignal(str)
+    step_updated = pyqtSignal(str)
+    files_count_updated = pyqtSignal(int, int)
+    time_updated = pyqtSignal(int, int)  # (경과 시간, 남은 시간)
     completed = pyqtSignal(str)
     error_occurred = pyqtSignal(str)
 
@@ -87,13 +119,19 @@ class LYGLSplitWorker(QThread):
         super().__init__()
         self.input_file = input_file
         self.output_folder = output_folder
+        self.start_time = None
 
     def run(self):
         """작업 실행"""
+        import time
+        self.start_time = time.time()
+        
         try:
             from pathlib import Path
 
             self.status_updated.emit("통합 파일 분할 시작...")
+            self.step_updated.emit("1/2")
+            self.files_count_updated.emit(0, 7)
             self.progress_updated.emit(10)
 
             # 파일명에서 날짜 추출 (예: 251128_LYGL_StringALL.xlsx → 251128)
@@ -111,15 +149,35 @@ class LYGLSplitWorker(QThread):
             )
 
             self.progress_updated.emit(100)
-            self.completed.emit(f"7개 언어 파일이 생성되었습니다.")
+            
+            # 소요 시간 계산
+            elapsed_time = int(time.time() - self.start_time)
+            self.completed.emit(f"7개 언어 파일이 생성되었습니다. 소요 시간: {elapsed_time}초")
 
         except Exception as e:
             self.error_occurred.emit(f"Split 실패: {str(e)}")
 
     def _progress_callback(self, percent: int, message: str):
         """진행 상황 콜백"""
-        self.progress_updated.emit(percent)
+        import time
+        import re
+        
+        if percent is not None:
+            self.progress_updated.emit(percent)
         self.status_updated.emit(message)
+        
+        # 메시지에서 파일 처리 정보 추출 (예: "CT 파일 처리 중 (2/7)...")
+        match = re.search(r'\((\d+)/(\d+)\)', message)
+        if match:
+            current = int(match.group(1))
+            total = int(match.group(2))
+            self.files_count_updated.emit(current, total)
+        
+        # 시간 계산 및 전송
+        if hasattr(self, 'start_time') and self.start_time and percent and percent > 0:
+            elapsed = int(time.time() - self.start_time)
+            remaining = int((elapsed / percent) * (100 - percent)) if percent < 100 else 0
+            self.time_updated.emit(elapsed, remaining)
 
 
 class LYGLBatchWorker(QThread):
@@ -128,6 +186,9 @@ class LYGLBatchWorker(QThread):
     # Signals
     progress_updated = pyqtSignal(int)
     status_updated = pyqtSignal(str)
+    step_updated = pyqtSignal(str)
+    files_count_updated = pyqtSignal(int, int)
+    time_updated = pyqtSignal(int, int)  # (경과 시간, 남은 시간)
     completed = pyqtSignal(str)
     error_occurred = pyqtSignal(str)
 
@@ -140,14 +201,20 @@ class LYGLBatchWorker(QThread):
         self.batch_info = batch_info
         self.output_path = output_path
         self.auto_complete = auto_complete
+        self.start_time = None
 
     def run(self):
         """작업 실행"""
+        import time
+        self.start_time = time.time()
+        
         try:
             from pathlib import Path
             from core.lygl.batch_merger import merge_batches
 
             self.status_updated.emit(f"{len(self.selected_batches)}개 배치 병합 시작...")
+            self.step_updated.emit("1/2")
+            self.files_count_updated.emit(0, len(self.selected_batches))
             self.progress_updated.emit(5)
             self.status_updated.emit(f"기준 배치: {self.base_batch}")
 
@@ -164,7 +231,10 @@ class LYGLBatchWorker(QThread):
             )
 
             self.progress_updated.emit(100)
-            self.completed.emit(f"배치 병합 완료: {len(output_files)}개 파일 생성\n로그: {log_path.name}")
+            
+            # 소요 시간 계산
+            elapsed_time = int(time.time() - self.start_time)
+            self.completed.emit(f"배치 병합 완료: {len(output_files)}개 파일 생성\n로그: {log_path.name}\n소요 시간: {elapsed_time}초")
 
         except Exception as e:
             import traceback
@@ -174,8 +244,25 @@ class LYGLBatchWorker(QThread):
 
     def _progress_callback(self, percent: int, message: str):
         """진행 상황 콜백"""
-        self.progress_updated.emit(percent)
+        import time
+        import re
+        
+        if percent is not None:
+            self.progress_updated.emit(percent)
         self.status_updated.emit(message)
+        
+        # 메시지에서 파일 처리 정보 추출 (예: "CT 파일 처리 중 (2/7)...")
+        match = re.search(r'\((\d+)/(\d+)\)', message)
+        if match:
+            current = int(match.group(1))
+            total = int(match.group(2))
+            self.files_count_updated.emit(current, total)
+        
+        # 시간 계산 및 전송
+        if hasattr(self, 'start_time') and self.start_time and percent and percent > 0:
+            elapsed = int(time.time() - self.start_time)
+            remaining = int((elapsed / percent) * (100 - percent)) if percent < 100 else 0
+            self.time_updated.emit(elapsed, remaining)
 
 
 class LYGLDiffWorker(QThread):
@@ -184,6 +271,9 @@ class LYGLDiffWorker(QThread):
     # Signals
     progress_updated = pyqtSignal(int)
     status_updated = pyqtSignal(str)
+    step_updated = pyqtSignal(str)
+    files_count_updated = pyqtSignal(int, int)
+    time_updated = pyqtSignal(int, int)  # (경과 시간, 남은 시간)
     completed = pyqtSignal(str)
     error_occurred = pyqtSignal(str)
 
@@ -192,15 +282,21 @@ class LYGLDiffWorker(QThread):
         self.folder1 = folder1
         self.folder2 = folder2
         self.output_path = output_path
+        self.start_time = None
 
     def run(self):
         """작업 실행"""
+        import time
+        self.start_time = time.time()
+        
         try:
             from pathlib import Path
             import datetime
             from core.lygl.legacy_diff import legacy_diff
 
             self.status_updated.emit("버전 비교 시작...")
+            self.step_updated.emit("1/2")
+            self.files_count_updated.emit(0, 7)
             self.progress_updated.emit(5)
 
             folder1_path = Path(self.folder1)
@@ -225,15 +321,34 @@ class LYGLDiffWorker(QThread):
             summary = f"비교 완료: {total_changes}개 변경 사항\n"
             summary += "\n".join([f"{lang}: {count}개" for lang, count in change_counts.items() if count > 0])
 
-            self.completed.emit(f"{result_path.name} 생성 완료\n{summary}")
+            # 소요 시간 계산
+            elapsed_time = int(time.time() - self.start_time)
+            self.completed.emit(f"{result_path.name} 생성 완료\n{summary}\n소요 시간: {elapsed_time}초")
 
         except Exception as e:
             self.error_occurred.emit(f"Diff 실패: {str(e)}")
 
     def _progress_callback(self, percent: int, message: str):
         """진행 상황 콜백"""
-        self.progress_updated.emit(percent)
+        import time
+        import re
+        
+        if percent is not None:
+            self.progress_updated.emit(percent)
         self.status_updated.emit(message)
+        
+        # 메시지에서 파일 처리 정보 추출 (예: "CT 파일 처리 중 (2/7)...")
+        match = re.search(r'\((\d+)/(\d+)\)', message)
+        if match:
+            current = int(match.group(1))
+            total = int(match.group(2))
+            self.files_count_updated.emit(current, total)
+        
+        # 시간 계산 및 전송
+        if hasattr(self, 'start_time') and self.start_time and percent and percent > 0:
+            elapsed = int(time.time() - self.start_time)
+            remaining = int((elapsed / percent) * (100 - percent)) if percent < 100 else 0
+            self.time_updated.emit(elapsed, remaining)
 
 
 class LYGLStatusCheckWorker(QThread):
@@ -242,6 +357,9 @@ class LYGLStatusCheckWorker(QThread):
     # Signals
     progress_updated = pyqtSignal(int)
     status_updated = pyqtSignal(str)
+    step_updated = pyqtSignal(str)
+    files_count_updated = pyqtSignal(int, int)
+    time_updated = pyqtSignal(int, int)  # (경과 시간, 남은 시간)
     completed = pyqtSignal(str)
     error_occurred = pyqtSignal(str)
 
@@ -249,14 +367,20 @@ class LYGLStatusCheckWorker(QThread):
         super().__init__()
         self.file_paths = file_paths  # 파일 경로 리스트
         self.output_path = output_path
+        self.start_time = None
 
     def run(self):
         """작업 실행"""
+        import time
+        self.start_time = time.time()
+        
         try:
             from pathlib import Path
             from core.lygl import status_check
 
             self.status_updated.emit("언어 파일 분석 중...")
+            self.step_updated.emit("1/2")
+            self.files_count_updated.emit(0, 7)
             self.progress_updated.emit(3)
 
             # 파일명에서 언어 코드 자동 인식
@@ -303,11 +427,14 @@ class LYGLStatusCheckWorker(QThread):
 
             self.progress_updated.emit(100)
 
+            # 소요 시간 계산
+            elapsed_time = int(time.time() - self.start_time)
+            
             # 결과 메시지
             if inconsistency_count == 0:
-                message = "Status 불일치가 없습니다!\n모든 언어 파일의 Status가 일치합니다."
+                message = f"Status 불일치가 없습니다!\n모든 언어 파일의 Status가 일치합니다.\n소요 시간: {elapsed_time}초"
             else:
-                message = f"Status 불일치 발견: {inconsistency_count}개 키\n\n결과 파일: {Path(self.output_path).name}"
+                message = f"Status 불일치 발견: {inconsistency_count}개 키\n\n결과 파일: {Path(self.output_path).name}\n소요 시간: {elapsed_time}초"
 
             self.completed.emit(message)
 
@@ -316,5 +443,22 @@ class LYGLStatusCheckWorker(QThread):
 
     def _progress_callback(self, percent: int, message: str):
         """진행 상황 콜백"""
-        self.progress_updated.emit(percent)
+        import time
+        import re
+        
+        if percent is not None:
+            self.progress_updated.emit(percent)
         self.status_updated.emit(message)
+        
+        # 메시지에서 파일 처리 정보 추출 (예: "CT 파일 처리 중 (2/7)...")
+        match = re.search(r'\((\d+)/(\d+)\)', message)
+        if match:
+            current = int(match.group(1))
+            total = int(match.group(2))
+            self.files_count_updated.emit(current, total)
+        
+        # 시간 계산 및 전송
+        if hasattr(self, 'start_time') and self.start_time and percent and percent > 0:
+            elapsed = int(time.time() - self.start_time)
+            remaining = int((elapsed / percent) * (100 - percent)) if percent < 100 else 0
+            self.time_updated.emit(elapsed, remaining)

@@ -1,0 +1,359 @@
+/* ===================================================================
+   Sebastian v2 미니멀 스타일시트
+   Material Design 3.0 기반 모던 미니멀 디자인
+   =================================================================== */
+
+/* ===== 전역 설정 ===== */
+* {
+    font-family: "Pretendard", "Segoe UI", "SF Pro", Roboto, Arial;
+    font-size: 13px;
+}
+
+/* ===== 메인 윈도우 ===== */
+QMainWindow, QDialog {
+    background-color: #FFFFFF;
+    color: #1F2937;
+}
+
+/* ===== 탭 위젯 ===== */
+QTabWidget::pane {
+    border: none;
+    background-color: #FFFFFF;
+}
+
+QTabBar::tab {
+    background-color: #F8F9FA;
+    color: #6B7280;
+    padding: 12px 24px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-weight: 500;
+    min-height: 48px;
+}
+
+QTabBar::tab:selected {
+    background-color: #FFFFFF;
+    color: #5E35B1;
+    border-bottom: 2px solid #5E35B1;
+}
+
+QTabBar::tab:hover {
+    background-color: #F3F4F6;
+}
+
+/* ===== 버튼 ===== */
+QPushButton {
+    background-color: #5E35B1;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 600;
+    min-height: 40px;
+}
+
+QPushButton:hover {
+    background-color: #7E57C2;
+}
+
+QPushButton:pressed {
+    background-color: #4527A0;
+}
+
+QPushButton:disabled {
+    background-color: #F3F4F6;
+    color: #9CA3AF;
+}
+
+/* 보조 버튼 (취소, 폴더 선택 등) */
+QPushButton#secondaryButton {
+    background-color: #F8F9FA;
+    color: #1F2937;
+    border: 1px solid #E5E7EB;
+}
+
+QPushButton#secondaryButton:hover {
+    background-color: #F3F4F6;
+}
+
+QPushButton#secondaryButton:pressed {
+    background-color: #E5E7EB;
+}
+
+/* M4/GL 카드 버튼 */
+QPushButton#cardButton {
+    background-color: #FFFFFF;
+    color: #1F2937;
+    border: 2px solid #E5E7EB;
+    border-radius: 12px;
+    padding: 16px;
+    min-width: 240px;
+    min-height: 200px;
+}
+
+QPushButton#cardButton:hover {
+    border-color: #5E35B1;
+}
+
+QPushButton#cardButton:pressed {
+    background-color: #F8F9FA;
+}
+
+/* M4/GL 선택된 카드 */
+QPushButton#cardButton[selected="true"] {
+    background-color: #EDE7F6;
+    border: 3px solid #5E35B1;
+}
+
+/* LY/GL 리스트 버튼 (수직 리스트 아이템) */
+QPushButton#listItemButton {
+    background-color: #FFFFFF;
+    color: #1F2937;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    padding: 10px 16px;
+    text-align: left;
+    min-height: 64px;
+}
+
+QPushButton#listItemButton:hover {
+    background-color: #F8F9FA;
+    border-color: #5E35B1;
+}
+
+QPushButton#listItemButton:pressed {
+    background-color: #F3F4F6;
+}
+
+/* ===== 입력 필드 ===== */
+QLineEdit, QTextEdit, QPlainTextEdit {
+    background-color: #FFFFFF;
+    color: #1F2937;
+    border: 2px solid #E5E7EB;
+    border-radius: 8px;
+    padding: 10px 12px;
+    min-height: 40px;
+}
+
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {
+    border-color: #5E35B1;
+}
+
+QLineEdit:read-only {
+    background-color: #F8F9FA;
+    color: #6B7280;
+}
+
+/* NC/GL 검증 상태별 입력 필드 */
+QLineEdit#validInput {
+    border: 2px solid #10B981;
+}
+
+QLineEdit#invalidInput {
+    border: 2px solid #EF4444;
+}
+
+/* ===== 레이블 ===== */
+QLabel {
+    color: #1F2937;
+    background-color: transparent;
+}
+
+/* ===== 체크박스 ===== */
+QCheckBox {
+    color: #1F2937;
+    spacing: 8px;
+}
+
+QCheckBox::indicator {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #E5E7EB;
+    border-radius: 4px;
+    background-color: #FFFFFF;
+}
+
+QCheckBox::indicator:hover {
+    border-color: #5E35B1;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #5E35B1;
+    border-color: #5E35B1;
+}
+
+/* ===== 라디오 버튼 ===== */
+QRadioButton {
+    color: #1F2937;
+    spacing: 8px;
+}
+
+QRadioButton::indicator {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #E5E7EB;
+    border-radius: 10px;
+    background-color: #FFFFFF;
+}
+
+QRadioButton::indicator:hover {
+    border-color: #5E35B1;
+}
+
+QRadioButton::indicator:checked {
+    background-color: #5E35B1;
+    border-color: #5E35B1;
+}
+
+/* ===== 리스트/트리/테이블 뷰 ===== */
+QListView, QTreeView, QTableView {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+}
+
+QListWidget {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    padding: 4px;
+}
+
+QListWidget::item {
+    padding: 8px;
+    border-radius: 4px;
+}
+
+QListWidget::item:hover {
+    background-color: #F8F9FA;
+}
+
+QListWidget::item:selected {
+    background-color: #EDE7F6;
+    color: #5E35B1;
+}
+
+/* ===== 프로그레스 바 ===== */
+QProgressBar {
+    background-color: #F3F4F6;
+    border: none;
+    border-radius: 4px;
+    text-align: right;
+    padding-right: 8px;
+    height: 8px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+QProgressBar::chunk {
+    background-color: #5E35B1;
+    border-radius: 4px;
+}
+
+/* ===== 메뉴 바 ===== */
+QMenuBar {
+    background-color: #FFFFFF;
+    border-bottom: 1px solid #E5E7EB;
+    padding: 4px 8px;
+}
+
+QMenuBar::item {
+    padding: 6px 12px;
+    background-color: transparent;
+    border-radius: 4px;
+}
+
+QMenuBar::item:selected {
+    background-color: #F8F9FA;
+}
+
+QMenu {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    padding: 4px;
+}
+
+QMenu::item {
+    padding: 8px 24px;
+    border-radius: 4px;
+}
+
+QMenu::item:selected {
+    background-color: #F8F9FA;
+}
+
+QMenu::separator {
+    height: 1px;
+    background-color: #E5E7EB;
+    margin: 4px 0;
+}
+
+/* ===== 상태 바 ===== */
+QStatusBar {
+    background-color: #F8F9FA;
+    border-top: 1px solid #E5E7EB;
+    color: #6B7280;
+    padding: 0 16px;
+    font-size: 11px;
+}
+
+/* ===== 스크롤바 ===== */
+QScrollBar:vertical {
+    background-color: #F8F9FA;
+    width: 12px;
+    border-radius: 6px;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #D1D5DB;
+    border-radius: 6px;
+    min-height: 30px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background-color: #9CA3AF;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
+QScrollBar:horizontal {
+    background-color: #F8F9FA;
+    height: 12px;
+    border-radius: 6px;
+}
+
+QScrollBar::handle:horizontal {
+    background-color: #D1D5DB;
+    border-radius: 6px;
+    min-width: 30px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background-color: #9CA3AF;
+}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0px;
+}
+
+/* ===== 툴팁 ===== */
+QToolTip {
+    background-color: #1F2937;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+/* ===== 메시지 박스 ===== */
+QMessageBox {
+    background-color: #FFFFFF;
+}
+
+QMessageBox QPushButton {
+    min-width: 80px;
+}

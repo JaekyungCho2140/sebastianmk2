@@ -38,7 +38,14 @@ def merge_ncgl(folder_path: str, date: str, milestone: str, progress_queue) -> N
                 queue.put(f"단계:{idx + 1}/{total_steps}")
                 queue.put(f"처리된 파일:{idx + 1}")
                 current_step += 1
-                queue.put(int(current_step / total_steps * 100))
+                current_progress = int(current_step / total_steps * 100)
+                
+                # 시간 계산 및 전송
+                elapsed = int(time.time() - start_time)
+                remaining = int((elapsed / current_progress) * (100 - current_progress)) if current_progress > 0 else 0
+                queue.put(("time", elapsed, remaining))
+                
+                queue.put(current_progress)
         t1 = time.time()
         print(f"전체 파일 병렬 읽기 소요 시간: {t1 - t0:.2f}초")
 
@@ -120,8 +127,16 @@ def merge_ncgl(folder_path: str, date: str, milestone: str, progress_queue) -> N
         print(f"엑셀 저장 및 서식 적용 소요 시간: {t_save_end - t_save_start:.2f}초")
 
         current_step += 1
+        
+        # 시간 계산 및 전송
+        elapsed = int(time.time() - start_time)
+        queue.put(("time", elapsed, 0))  # 완료 시 남은 시간 0
+        
         queue.put(100)
-        queue.put("완료:테이블 병합을 완료했습니다.")
+        
+        # 소요 시간 계산
+        elapsed_time = time.time() - start_time
+        queue.put(f"완료:테이블 병합을 완료했습니다. 소요 시간: {int(elapsed_time)}초")
 
     # process_worker 실행
     try:

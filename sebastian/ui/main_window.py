@@ -79,10 +79,6 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(self.tab_widget)
 
-        # LogViewer
-        self.log_viewer = LogViewer()
-        layout.addWidget(self.log_viewer)
-
         # Signal 연결
         self._connect_signals()
 
@@ -95,12 +91,21 @@ class MainWindow(QMainWindow):
         # 상태바
         self._setup_statusbar()
 
-        # 전역 스타일
-        self.setStyleSheet(f"""
-            QMainWindow {{
-                background-color: {BG_PRIMARY};
-            }}
-        """)
+        # QSS 스타일시트 로드
+        self._load_stylesheet()
+
+    def _load_stylesheet(self):
+        """QSS 스타일시트 로드"""
+        from pathlib import Path
+
+        # 스타일시트 파일 경로
+        current_dir = Path(__file__).parent
+        qss_path = current_dir / "styles" / "minimal.qss"
+
+        if qss_path.exists():
+            with open(qss_path, 'r', encoding='utf-8') as f:
+                stylesheet = f.read()
+                self.setStyleSheet(stylesheet)
 
     def _connect_signals(self):
         """탭 Signal을 LogViewer와 연결"""
@@ -112,13 +117,10 @@ class MainWindow(QMainWindow):
 
     def _on_m4gl_execute(self, mode: str, folder_path: str):
         """M4GL 실행 완료"""
-        mode_name = "DIALOGUE" if mode == 'dialogue' else "STRING"
-        self.log_viewer.add_log(f"M4/GL {mode_name} 병합 완료: {folder_path}")
         self.update_status("완료", SUCCESS)
 
     def _on_ncgl_execute(self, folder_path: str, date: str, milestone: str):
         """NCGL 실행 완료"""
-        self.log_viewer.add_log(f"NC/GL 병합 완료: {folder_path} (날짜: {date}, 마일스톤: M{milestone})")
         self.update_status("완료", SUCCESS)
 
     def _setup_menubar(self):
@@ -202,21 +204,12 @@ class MainWindow(QMainWindow):
         self.setStatusBar(statusbar)
 
     def _save_log(self):
-        """로그 저장"""
-        file_path, _ = QFileDialog.getSaveFileName(
+        """로그 저장 - 제거됨 (파일 로그 자동 저장)"""
+        QMessageBox.information(
             self,
-            "로그 저장",
-            "sebastian_log.txt",
-            "Text Files (*.txt);;All Files (*)"
+            "로그",
+            "로그는 실행 파일 폴더의 logs 디렉토리에 자동 저장됩니다."
         )
-        if file_path:
-            try:
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    f.write(self.log_viewer.log_text.toPlainText())
-                self.statusBar().showMessage(f"로그 저장됨: {file_path}", 3000)
-                self.log_viewer.add_log(f"로그 저장: {file_path}")
-            except Exception as e:
-                QMessageBox.critical(self, "오류", f"로그 저장 실패: {str(e)}")
 
     def _show_guide(self):
         """사용자 가이드 표시"""

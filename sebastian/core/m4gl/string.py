@@ -121,7 +121,14 @@ def merge_string(folder_path: str, progress_queue) -> None:
             })
             result_df = pd.concat([result_df, temp_df], ignore_index=True)
 
-            progress_queue.put(int(20 + (50 / len(file_list)) * (i + 1)))
+            current_progress = int(20 + (50 / len(file_list)) * (i + 1))
+            
+            # 시간 계산 및 전송
+            elapsed = int(time.time() - start_time)
+            remaining = int((elapsed / current_progress) * (100 - current_progress)) if current_progress > 0 else 0
+            progress_queue.put(("time", elapsed, remaining))
+            
+            progress_queue.put(current_progress)
             progress_queue.put(f"처리된 파일:{i+1}")
 
         progress_queue.put("단계:2/2")

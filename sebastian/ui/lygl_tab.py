@@ -9,7 +9,7 @@ wireframe 스펙:
 """
 
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QGridLayout,
+    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QPushButton, QLabel, QMessageBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -112,6 +112,14 @@ class LYGLTab(QWidget):
         # Signal 연결
         worker.progress_updated.connect(self.progress_dialog.update_progress)
         worker.status_updated.connect(lambda msg: self.progress_dialog.update_file(msg))
+        
+        # step_updated, files_count_updated가 있으면 연결
+        if hasattr(worker, 'step_updated'):
+            worker.step_updated.connect(self.progress_dialog.update_step)
+        if hasattr(worker, 'files_count_updated'):
+            worker.files_count_updated.connect(self.progress_dialog.update_files)
+        
+        worker.time_updated.connect(self.progress_dialog.update_time)
         worker.completed.connect(self._on_completed)
         worker.error_occurred.connect(self._on_error)
 
@@ -144,150 +152,83 @@ class LYGLTab(QWidget):
             self.progress_dialog.reject()
 
     def _setup_ui(self):
-        """UI 초기화"""
+        """UI 초기화 - v2 수직 리스트 디자인"""
         layout = QVBoxLayout()
         layout.setContentsMargins(48, 48, 48, 48)
-        layout.setSpacing(24)
+        layout.setSpacing(12)  # 버튼 간격 12px
 
-        # 그리드 레이아웃 (2×2)
-        grid = QGridLayout()
-        grid.setSpacing(24)
+        # 기능 버튼 (수직 리스트)
+        functions = [
+            ("Merge", "7 → 1", "언어별 파일 → 통합 생성", self.merge_requested.emit),
+            ("Split", "1 → 7", "통합 파일 → 언어별 분리", self.split_requested.emit),
+            ("Batches", "배치 병합", "Status 자동 완료 처리", self.batch_requested.emit),
+            ("Diff", "버전 비교", "변경 사항 추적", self.diff_requested.emit),
+            ("Status Check", "Status 통일 검증", "언어별 Status 일치 확인", self.status_check_requested.emit),
+        ]
 
-        # Merge 버튼
-        merge_btn = self._create_function_button(
-            "Merge",
-            "7 → 1",
-            "언어별 파일",
-            "통합 생성"
-        )
-        merge_btn.clicked.connect(self.merge_requested.emit)
-        grid.addWidget(merge_btn, 0, 0)
+        for title, subtitle, description, signal in functions:
+            btn = self._create_list_button(title, subtitle, description)
+            btn.clicked.connect(signal)
+            layout.addWidget(btn)
 
-        # Split 버튼
-        split_btn = self._create_function_button(
-            "Split",
-            "1 → 7",
-            "통합 파일",
-            "언어별 분리"
-        )
-        split_btn.clicked.connect(self.split_requested.emit)
-        grid.addWidget(split_btn, 0, 1)
-
-        # Batches 버튼
-        batch_btn = self._create_function_button(
-            "Batches",
-            "배치 병합",
-            "중복 KEY",
-            "자동 제거"
-        )
-        batch_btn.clicked.connect(self.batch_requested.emit)
-        grid.addWidget(batch_btn, 1, 0)
-
-        # Diff 버튼
-        diff_btn = self._create_function_button(
-            "Diff",
-            "버전 비교",
-            "변경 사항",
-            "추적"
-        )
-        diff_btn.clicked.connect(self.diff_requested.emit)
-        grid.addWidget(diff_btn, 1, 1)
-
-        layout.addLayout(grid)
-
-        # Status Check 버튼 (중앙)
-        status_check_layout = QVBoxLayout()
-        status_check_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        status_check_layout.setSpacing(8)
-
-        status_check_btn = QPushButton("Status Check")
-        status_check_btn.setFixedSize(120, 40)
-        status_check_btn.setFont(QFont("Pretendard", 11, QFont.Weight.Bold))
-        status_check_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        status_check_btn.setStyleSheet(f"""
-            QPushButton {{
-                background: qlineargradient(
-                    x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #BA68C8,
-                    stop:1 #9C27B0
-                );
-                color: white;
-                border: 1px solid #9C27B0;
-                border-radius: 8px;
-                padding: 8px;
-            }}
-            QPushButton:hover {{
-                background: qlineargradient(
-                    x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #CE93D8,
-                    stop:1 #BA68C8
-                );
-            }}
-        """)
-        status_check_btn.clicked.connect(self.status_check_requested.emit)
-        status_check_layout.addWidget(status_check_btn)
-
-        # 설명 레이블
-        status_desc = QLabel("언어별 Status 통일 검증")
-        status_desc.setFont(QFont("Pretendard", 10))
-        status_desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        status_desc.setStyleSheet(f"color: {TEXT_SECONDARY};")
-        status_check_layout.addWidget(status_desc)
-
-        layout.addLayout(status_check_layout)
         layout.addStretch()
 
         self.setLayout(layout)
 
-    def _create_function_button(self, title: str, subtitle: str, desc1: str, desc2: str) -> QPushButton:
-        """기능 버튼 생성"""
+    def _create_list_button(self, title: str, subtitle: str, description: str) -> QPushButton:
+        """수직 리스트 아이템 버튼 생성 (v2 미니멀 디자인)
+        
+        Args:
+            title: 제목 (예: "Merge")
+            subtitle: 부제목 (예: "7 → 1")
+            description: 설명 (예: "언어별 파일 → 통합 생성")
+        
+        Returns:
+            QPushButton: 리스트 아이템 버튼
+        """
         btn = QPushButton()
-        btn.setFixedSize(240, 180)
+        btn.setObjectName("listItemButton")
+        btn.setMinimumHeight(64)
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn.setStyleSheet(f"""
-            QPushButton {{
-                background: qlineargradient(
-                    x1:0, y1:0, x2:1, y2:1,
-                    stop:0 #F3E5F5,
-                    stop:1 #E1BEE7
-                );
-                border: 2px solid #BA68C8;
-                border-radius: 12px;
-                color: {TEXT_PRIMARY};
-            }}
-            QPushButton:hover {{
-                background: qlineargradient(
-                    x1:0, y1:0, x2:1, y2:1,
-                    stop:0 #E1BEE7,
-                    stop:1 #CE93D8
-                );
-            }}
-        """)
 
-        # 버튼 내부 레이아웃
-        btn_layout = QVBoxLayout()
-        btn_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        btn_layout.setSpacing(8)
+        # 내부 레이아웃 (수평)
+        btn_layout = QHBoxLayout()
+        btn_layout.setContentsMargins(16, 10, 16, 10)
+        btn_layout.setSpacing(16)
+
+        # 왼쪽 영역: 제목 + 설명 (수직)
+        left_layout = QVBoxLayout()
+        left_layout.setSpacing(4)
 
         title_label = QLabel(title)
-        title_label.setFont(QFont("Pretendard", 18, QFont.Weight.Bold))
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        btn_layout.addWidget(title_label)
+        title_label.setFont(QFont("Pretendard", 15, QFont.Weight.DemiBold))
+        left_layout.addWidget(title_label)
 
+        desc_label = QLabel(description)
+        desc_label.setFont(QFont("Pretendard", 12))
+        from .common import TEXT_SECONDARY
+        desc_label.setStyleSheet(f"color: {TEXT_SECONDARY};")
+        left_layout.addWidget(desc_label)
+
+        btn_layout.addLayout(left_layout)
+
+        # 중앙: 빈 공간 (flexible)
+        btn_layout.addStretch()
+
+        # 우측: 부제목
         subtitle_label = QLabel(subtitle)
-        subtitle_label.setFont(QFont("Pretendard", 16))
-        subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        subtitle_label.setFont(QFont("Pretendard", 13))
+        subtitle_label.setStyleSheet(f"color: {TEXT_SECONDARY};")
+        subtitle_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         btn_layout.addWidget(subtitle_label)
 
-        desc1_label = QLabel(desc1)
-        desc1_label.setFont(QFont("Pretendard", 13))
-        desc1_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        btn_layout.addWidget(desc1_label)
-
-        desc2_label = QLabel(desc2)
-        desc2_label.setFont(QFont("Pretendard", 13))
-        desc2_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        btn_layout.addWidget(desc2_label)
+        # 화살표 아이콘
+        arrow_label = QLabel("→")
+        arrow_label.setFont(QFont("Pretendard", 20))
+        from .common import TEXT_DISABLED
+        arrow_label.setStyleSheet(f"color: {TEXT_DISABLED};")
+        arrow_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        btn_layout.addWidget(arrow_label)
 
         btn.setLayout(btn_layout)
 

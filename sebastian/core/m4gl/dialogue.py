@@ -56,6 +56,12 @@ def merge_dialogue(folder_path: str, progress_queue) -> None:
         cinematic_data = read_excel_file(cinematic_path, sheet_name=1, header_row=1, skip_rows=9)
         # 글로벌 OnOFF=1 필터링 (G열, 인덱스 6)
         cinematic_data = cinematic_data[cinematic_data.iloc[:, 6] == 1]
+        
+        # 시간 계산 및 전송
+        elapsed = int(time.time() - start_time)
+        remaining = int((elapsed / 20) * 80) if elapsed > 0 else 0
+        progress_queue.put(("time", elapsed, remaining))
+        
         progress_queue.put(20)
         progress_queue.put("처리된 파일:1")
 
@@ -63,6 +69,12 @@ def merge_dialogue(folder_path: str, progress_queue) -> None:
         smalltalk_data = read_excel_file(smalltalk_path, sheet_name=1, header_row=1, skip_rows=4)
         # 글로벌 OnOFF=1 필터링 (G열, 인덱스 6)
         smalltalk_data = smalltalk_data[smalltalk_data.iloc[:, 6] == 1]
+        
+        # 시간 계산 및 전송
+        elapsed = int(time.time() - start_time)
+        remaining = int((elapsed / 40) * 60) if elapsed > 0 else 0
+        progress_queue.put(("time", elapsed, remaining))
+        
         progress_queue.put(40)
         progress_queue.put("처리된 파일:2")
 
@@ -171,6 +183,11 @@ def merge_dialogue(folder_path: str, progress_queue) -> None:
         # 인덱스 열 갱신
         result_df['#'] = range(1, len(result_df) + 1)
 
+        # 시간 계산 및 전송
+        elapsed = int(time.time() - start_time)
+        remaining = int((elapsed / 80) * 20) if elapsed > 0 else 0
+        progress_queue.put(("time", elapsed, remaining))
+        
         progress_queue.put(80)
         progress_queue.put("파일:결과 파일 저장 중...")
 

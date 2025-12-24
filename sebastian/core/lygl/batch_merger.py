@@ -1073,8 +1073,10 @@ def merge_batches(
         log_info['end_time'] = datetime.now()
         log_path = generate_merge_batches_log(log_info, output_dir)
 
+        # 소요 시간 계산
+        elapsed_time = (datetime.now() - start_time).total_seconds()
         if progress_callback:
-            progress_callback(100, "완료")
+            progress_callback(100, f"완료. 소요 시간: {int(elapsed_time)}초")
 
         return saved_files, log_path
 

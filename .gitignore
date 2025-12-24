@@ -37,6 +37,12 @@ desktop.ini
 *.tmp
 *.temp
 
+# Output files (테스트 결과물)
+*_MIR4_MASTER_*.xlsx
+*_LYGL_*.xlsx
+*_DIFF.xlsx
+*_NC_*.xlsx
+
 # Session
 .session/
 .serena/

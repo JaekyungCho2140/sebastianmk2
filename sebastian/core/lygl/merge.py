@@ -5,9 +5,12 @@ PRD 섹션 2.2.1 "Merge Operation"에 정의된 알고리즘을 구현합니다.
 7개 언어별 파일을 1개 통합 파일로 병합합니다.
 """
 
+import logging
 from typing import Dict
 from pathlib import Path
 from openpyxl import load_workbook, Workbook
+
+logger = logging.getLogger(__name__)
 
 from .validator import (
     LANGUAGE_MAPPING,
@@ -22,12 +25,13 @@ from .validator import (
 from .excel_format import apply_excel_format
 
 
-def merge(language_files: Dict[str, Path]) -> Workbook:
+def merge(language_files: Dict[str, Path], progress_callback=None) -> Workbook:
     """
     7개 언어별 파일을 1개 병합 파일로 통합
 
     Args:
         language_files: {'EN': Path('path/to/EN.xlsx'), 'CT': Path(...), ...}
+        progress_callback: 진행률 콜백 함수 (optional)
 
     Returns:
         병합된 Workbook 객체
@@ -97,10 +101,15 @@ def merge(language_files: Dict[str, Path]) -> Workbook:
         }
 
     # 3. 나머지 언어 파일 처리
-    for lang_code in ["CT", "CS", "JA", "TH", "PT-BR", "RU"]:
+    lang_codes = ["CT", "CS", "JA", "TH", "PT-BR", "RU"]
+    for file_idx, lang_code in enumerate(lang_codes, start=1):
         lang_path = file_paths.get(lang_code)
         if not lang_path:
             raise ValidationError(f"Missing language file: {lang_code}")
+
+        # 진행 상황 콜백 (EN 포함 총 7개 중 현재 처리)
+        if progress_callback:
+            progress_callback(None, f"{lang_code} 파일 처리 중 ({file_idx + 1}/7)...")
 
         try:
             lang_wb = load_workbook(lang_path)
@@ -211,14 +220,22 @@ def merge_files(
         FileNotFoundError: 파일이 존재하지 않을 시
         IOError: 파일 읽기/쓰기 실패 시
     """
+    import time
+    start_time = time.time()
+    
+    logger.info("=" * 50)
+    logger.info("LY/GL Merge 시작")
+    logger.info(f"입력 파일: {list(language_file_paths.keys())}")
+    logger.info(f"출력 경로: {output_path}")
+    
     # Path 객체로 변환
     file_paths = {lang: Path(path) for lang, path in language_file_paths.items()}
 
     if progress_callback:
         progress_callback(0, "병합 작업을 시작합니다...")
 
-    # 병합 수행
-    merged_wb = merge(file_paths)
+    # 병합 수행 (progress_callback 전달)
+    merged_wb = merge(file_paths, progress_callback=progress_callback)
 
     if progress_callback:
         progress_callback(80, "병합된 파일을 저장하는 중...")
@@ -230,5 +247,11 @@ def merge_files(
     except Exception as e:
         raise IOError(f"Failed to write output file: {e}")
 
+    # 소요 시간 계산
+    elapsed_time = time.time() - start_time
+    logger.info(f"LY/GL Merge 완료 - 소요 시간: {int(elapsed_time)}초")
+    logger.info(f"출력 파일: {output}")
+    logger.info("=" * 50)
+    
     if progress_callback:
-        progress_callback(100, "병합이 완료되었습니다")
+        progress_callback(100, f"병합이 완료되었습니다. 소요 시간: {int(elapsed_time)}초")

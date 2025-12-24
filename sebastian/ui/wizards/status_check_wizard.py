@@ -142,7 +142,7 @@ class StatusCheckWizard(QDialog):
         """)
         output_layout.addWidget(self.output_input)
 
-        output_btn = QPushButton("Browse...")
+        output_btn = QPushButton("폴더 선택")
         output_btn.setMinimumSize(100, 40)
         output_btn.setFont(QFont("Pretendard", 11))
         output_btn.setStyleSheet(f"""
@@ -168,7 +168,7 @@ class StatusCheckWizard(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
 
-        cancel_btn = QPushButton("Cancel")
+        cancel_btn = QPushButton("취소")
         cancel_btn.setMinimumSize(100, 40)
         cancel_btn.setFont(QFont("Pretendard", 11))
         cancel_btn.setStyleSheet(f"""
@@ -185,7 +185,7 @@ class StatusCheckWizard(QDialog):
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
 
-        start_btn = QPushButton("Start")
+        start_btn = QPushButton("실행 →")
         start_btn.setMinimumSize(100, 40)
         start_btn.setFont(QFont("Pretendard", 11, QFont.Weight.Bold))
         start_btn.setStyleSheet(f"""

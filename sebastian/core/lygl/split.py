@@ -5,9 +5,12 @@ PRD 섹션 2.2.2 "Split Operation"에 정의된 알고리즘을 구현합니다.
 1개 통합 파일을 7개 언어별 파일로 분할합니다.
 """
 
+import logging
 from typing import Dict, Optional
 from pathlib import Path
 from openpyxl import load_workbook, Workbook
+
+logger = logging.getLogger(__name__)
 
 from .validator import (
     LANGUAGE_MAPPING,
@@ -20,12 +23,13 @@ from .validator import (
 from .excel_format import apply_split_format
 
 
-def split(merged_file_path: Path) -> Dict[str, Workbook]:
+def split(merged_file_path: Path, progress_callback=None) -> Dict[str, Workbook]:
     """
     1개 병합 파일을 7개 언어별 파일로 분할
 
     Args:
         merged_file_path: 병합 파일 경로
+        progress_callback: 진행률 콜백 함수 (optional)
 
     Returns:
         {'EN': Workbook, 'CT': Workbook, ...}
@@ -73,7 +77,11 @@ def split(merged_file_path: Path) -> Dict[str, Workbook]:
     # 2. 각 언어별 파일 생성
     result_workbooks = {}
 
-    for lang_code in LANGUAGE_ORDER:
+    for file_idx, lang_code in enumerate(LANGUAGE_ORDER, start=1):
+        # 진행 상황 콜백
+        if progress_callback:
+            progress_callback(None, f"{lang_code} 파일 생성 중 ({file_idx}/7)...")
+        
         lang_wb = Workbook()
         lang_ws = lang_wb.active
         lang_ws.title = "Sheet1"  # 시트명을 'Sheet1'으로 설정 (MS Excel 기본값)
@@ -148,6 +156,14 @@ def split_file(
         FileNotFoundError: 파일이 존재하지 않을 시
         IOError: 파일 읽기/쓰기 실패 시
     """
+    import time
+    start_time = time.time()
+    
+    logger.info("=" * 50)
+    logger.info("LY/GL Split 시작")
+    logger.info(f"입력 파일: {merged_file_path}")
+    logger.info(f"출력 디렉토리: {output_directory}")
+    
     merged_path = Path(merged_file_path)
     output_dir = Path(output_directory)
 
@@ -171,8 +187,8 @@ def split_file(
 
             date_prefix = datetime.now().strftime("%y%m%d")
 
-    # 분할 수행
-    workbooks = split(merged_path)
+    # 분할 수행 (progress_callback 전달)
+    workbooks = split(merged_path, progress_callback=progress_callback)
 
     if progress_callback:
         progress_callback(50, "언어별 파일을 저장하는 중...")
@@ -201,7 +217,13 @@ def split_file(
                 progress, f"{lang_code} 파일 저장 중 ({idx + 1}/{total_files})..."
             )
 
+    # 소요 시간 계산
+    elapsed_time = time.time() - start_time
+    logger.info(f"LY/GL Split 완료 - 소요 시간: {int(elapsed_time)}초")
+    logger.info(f"생성된 파일 수: {len(output_paths)}")
+    logger.info("=" * 50)
+    
     if progress_callback:
-        progress_callback(100, "분할이 완료되었습니다")
+        progress_callback(100, f"분할이 완료되었습니다. 소요 시간: {int(elapsed_time)}초")
 
     return output_paths

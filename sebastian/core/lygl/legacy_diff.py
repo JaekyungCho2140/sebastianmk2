@@ -417,6 +417,9 @@ def legacy_diff(
     Reference:
         PRD v1.4.0 섹션 3
     """
+    import time
+    start_time = time.time()
+    
     if progress_callback:
         progress_callback(0, "폴더 검증 중...")
 
@@ -441,7 +444,7 @@ def legacy_diff(
         # 진행률 업데이트 (10% ~ 70%)
         if progress_callback:
             progress = 10 + int((lang_idx + 1) / total_langs * 60)
-            progress_callback(progress, f"{lang} 파일 비교 중...")
+            progress_callback(progress, f"{lang} 파일 비교 중 ({lang_idx + 1}/{total_langs})...")
 
     # 변경사항 없으면 오류
     total_changes = sum(len(diffs) for diffs in all_diffs.values())
@@ -480,8 +483,10 @@ def legacy_diff(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     wb.save(output_path)
 
+    # 소요 시간 계산
+    elapsed_time = time.time() - start_time
     if progress_callback:
-        progress_callback(100, "완료")
+        progress_callback(100, f"완료. 소요 시간: {int(elapsed_time)}초")
 
     # 통계 정보 반환
     stats = {lang: len(diffs) for lang, diffs in all_diffs.items()}
