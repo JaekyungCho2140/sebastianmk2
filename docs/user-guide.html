@@ -162,7 +162,7 @@
 <h1>Sebastian 사용자 가이드</h1>
 
 <div class="info-box">
-    <strong>📌 버전</strong>: v0.1.1 (2025-12-24)<br>
+    <strong>📌 버전</strong>: v0.3.0 (2025-12-26)<br>
     <strong>👥 대상</strong>: PM, 기획자, L10n 팀 실무자 (비기술직)<br>
     <strong>🎯 목적</strong>: 게임 현지화 테이블 관리 도구 통합 프로그램
 </div>
@@ -175,8 +175,9 @@
         <li><a href="#m4gl">3. M4/GL 사용법 (MIR4)</a></li>
         <li><a href="#ncgl">4. NC/GL 사용법 (NC)</a></li>
         <li><a href="#lygl">5. LY/GL 사용법 (LY Table)</a></li>
-        <li><a href="#troubleshooting">6. 문제 해결</a></li>
-        <li><a href="#faq">7. 자주 묻는 질문 (FAQ)</a></li>
+        <li><a href="#common">6. 공통 도구 사용법</a></li>
+        <li><a href="#troubleshooting">7. 문제 해결</a></li>
+        <li><a href="#faq">8. 자주 묻는 질문 (FAQ)</a></li>
     </ul>
 </div>
 
@@ -184,7 +185,7 @@
 
 <h3>1.1 Sebastian이란?</h3>
 
-<p>Sebastian은 3개 게임(MIR4, NC, LY Table)의 현지화 테이블 관리 도구를 하나로 통합한 프로그램입니다.</p>
+<p>Sebastian은 3개 게임(MIR4, NC, LY Table)의 현지화 테이블 관리 도구와 공통 유틸리티를 하나로 통합한 프로그램입니다.</p>
 
 <div class="feature-card">
     <div class="feature-title">✅ 주요 장점</div>
@@ -222,6 +223,11 @@
             <td><strong>LY/GL</strong><br>(LY Table)</td>
             <td>Merge, Split<br>Batches, Diff<br>Status Check</td>
             <td>7개 언어 ⇄ 1개 통합<br>배치 병합, 버전 비교<br>상태 검증</td>
+        </tr>
+        <tr>
+            <td><strong>공통</strong><br>(Common)</td>
+            <td>CSV 따옴표 복원</td>
+            <td>memoQ export 파일의 따옴표를 원본 패턴으로 복원</td>
         </tr>
     </tbody>
 </table>
@@ -653,9 +659,125 @@
     </ul>
 </div>
 
-<h2 id="troubleshooting">6. 문제 해결</h2>
+<h2 id="common">6. 공통 도구 사용법</h2>
 
-<h3>6.1 자주 발생하는 오류</h3>
+<p>여러 게임에 공통으로 사용할 수 있는 유틸리티 도구 모음입니다.</p>
+
+<h3>6.1 CSV 따옴표 복원</h3>
+
+<div class="info-box">
+    <strong>📝 목적</strong>: memoQ export CSV 파일의 따옴표를 원본 패턴으로 복원<br>
+    <strong>📂 입력 파일</strong>: 원본 CSV, memoQ export CSV<br>
+    <strong>📄 출력 파일</strong>: {파일명}_restored.csv, {파일명}_diff_report.xlsx
+</div>
+
+<h4>사용 배경</h4>
+
+<div class="warning-box">
+    <strong>⚠️ 문제 상황</strong>:
+    <p>memoQ 도구는 CSV 파일을 RFC 4180 규격에 맞게 자동으로 정규화하는 기능이 있으며, 이 기능을 비활성화할 수 없습니다.</p>
+    <p>이로 인해 다음과 같은 문제가 발생합니다:</p>
+    <ul>
+        <li><strong>따옴표 추가/제거</strong>: 원본에 있던/없던 따옴표가 임의로 변경됨</li>
+        <li><strong>HTML 태그 내 escape</strong>: <code>class="green"</code> → <code>class=""green""</code></li>
+    </ul>
+</div>
+
+<h4>단계별 사용법</h4>
+
+<div class="step">
+    <span class="step-number">1</span>
+    <strong>공통 탭 선택</strong>
+    <ul>
+        <li>메인 창 상단의 "공통" 탭 클릭</li>
+    </ul>
+</div>
+
+<div class="step">
+    <span class="step-number">2</span>
+    <strong>CSV 따옴표 복원 버튼 클릭</strong>
+    <ul>
+        <li>"memoQ export 파일의 따옴표를 원본 파일과 비교하여 복원합니다" 버튼 클릭</li>
+        <li>Wizard 대화상자가 열림</li>
+    </ul>
+</div>
+
+<div class="step">
+    <span class="step-number">3</span>
+    <strong>원본 파일 선택</strong>
+    <ul>
+        <li>"📁 찾아보기" 버튼 클릭</li>
+        <li>memoQ import 전 원본 CSV 파일 선택</li>
+    </ul>
+</div>
+
+<div class="step">
+    <span class="step-number">4</span>
+    <strong>memoQ Export 파일 선택</strong>
+    <ul>
+        <li>"📁 찾아보기" 버튼 클릭</li>
+        <li>memoQ export 후 CSV 파일 선택</li>
+    </ul>
+</div>
+
+<div class="step">
+    <span class="step-number">5</span>
+    <strong>출력 폴더 선택</strong>
+    <ul>
+        <li>"📁 찾아보기" 버튼 클릭</li>
+        <li>복원 파일을 저장할 폴더 선택</li>
+    </ul>
+</div>
+
+<div class="step">
+    <span class="step-number">6</span>
+    <strong>"복원 시작" 버튼 클릭</strong>
+    <ul>
+        <li>모든 필드 입력 완료 시 버튼 활성화</li>
+        <li>진행 상황 Dialog 표시</li>
+    </ul>
+</div>
+
+<div class="step">
+    <span class="step-number">7</span>
+    <strong>결과 확인</strong>
+    <ul>
+        <li>복원 파일: <code>{export파일명}_restored.csv</code></li>
+        <li>보고서: <code>{export파일명}_diff_report.xlsx</code></li>
+    </ul>
+</div>
+
+<div class="success-box">
+    <strong>✅ 복원 완료</strong>:
+    <ul>
+        <li><strong>복원 파일</strong>: 원본의 따옴표 패턴이 복원된 CSV</li>
+        <li><strong>Excel 보고서</strong>: Summary (통계) + Restored Fields (복원 상세) + Warnings (경고)</li>
+    </ul>
+</div>
+
+<div class="warning-box">
+    <strong>⚠️ 주의사항</strong>:
+    <ul>
+        <li>원본 파일과 export 파일의 <strong>컬럼 수</strong>가 동일해야 합니다</li>
+        <li>원본 파일과 export 파일의 <strong>헤더</strong>가 일치해야 합니다</li>
+        <li>원본 파일과 export 파일의 <strong>key-name 값</strong>이 일치해야 합니다</li>
+    </ul>
+</div>
+
+<h4>복원 규칙</h4>
+
+<div class="info-box">
+    <p><strong>복원 원리</strong>:</p>
+    <ul>
+        <li><strong>내용이 동일한 필드</strong>: 원본 raw text를 그대로 복원 (RFC 4180 위반 포함)</li>
+        <li><strong>내용이 변경된 필드</strong>: Export 값 사용 (번역 변경 반영)</li>
+        <li><strong>보고서 기준</strong>: Export raw ≠ Restored raw인 필드만 기록</li>
+    </ul>
+</div>
+
+<h2 id="troubleshooting">7. 문제 해결</h2>
+
+<h3>7.1 자주 발생하는 오류</h3>
 
 <div class="feature-card">
     <div class="feature-title">❌ "파일을 찾을 수 없습니다"</div>
@@ -689,7 +811,7 @@
     </ul>
 </div>
 
-<h3>6.2 실행 관련 문제</h3>
+<h3>7.2 실행 관련 문제</h3>
 
 <div class="feature-card">
     <div class="feature-title">❌ "Windows Defender 차단"</div>
@@ -712,7 +834,7 @@
     </ul>
 </div>
 
-<h2 id="faq">7. 자주 묻는 질문 (FAQ)</h2>
+<h2 id="faq">8. 자주 묻는 질문 (FAQ)</h2>
 
 <h3>Q1. 레거시 스크립트와 결과가 다른가요?</h3>
 <div class="success-box">
@@ -795,8 +917,8 @@
 <hr>
 
 <div class="info-box">
-    <strong>📘 버전</strong>: v0.1.1<br>
-    <strong>📅 최종 수정</strong>: 2025-12-24<br>
+    <strong>📘 버전</strong>: v0.3.0<br>
+    <strong>📅 최종 수정</strong>: 2025-12-26<br>
     <strong>👨‍💻 개발자</strong>: Jaekyung Cho<br>
     <strong>🔗 GitHub</strong>: <a href="https://github.com/JaekyungCho2140/sebastianmk2">https://github.com/JaekyungCho2140/sebastianmk2</a>
 </div>

@@ -1,8 +1,8 @@
 # Sebastian PRD - 전체 개요
 
 **프로젝트명**: Sebastian
-**버전**: v0.1.1
-**작성일**: 2025-12-24
+**버전**: v0.3.0
+**작성일**: 2025-12-26
 **상태**: Production
 
 ---
@@ -17,6 +17,7 @@
 | **PRD-M4GL.md** | M4/GL 기능 상세 스펙 (DIALOGUE/STRING 병합) |
 | **PRD-NCGL.md** | NC/GL 기능 상세 스펙 (8개 언어 병합) |
 | **PRD-LYGL.md** | LY/GL 기능 상세 스펙 (Merge/Split/Batches/Diff/StatusCheck) |
+| **PRD-Common.md** | 공통 도구 상세 스펙 (CSV 따옴표 복원) |
 | **PRD-UI-Design.md** | UI/UX v2 디자인 시스템 및 컴포넌트 |
 
 ---
@@ -90,6 +91,19 @@
 
 **상세 문서**: [PRD-LYGL.md](PRD-LYGL.md)
 
+### 4. Common (공통 도구)
+
+**기능**:
+- **CSV 따옴표 복원**: memoQ export 파일의 따옴표를 원본 패턴으로 복원
+
+**특징**:
+- 상태 머신 기반 raw CSV 파서
+- RFC 4180 무시, 원본 raw text 완벽 재현
+- Export raw vs Restored raw 비교 보고서
+- 24개 테스트 통과
+
+**상세 문서**: [PRD-Common.md](PRD-Common.md)
+
 ---
 
 ## 전체 아키텍처
@@ -97,26 +111,28 @@
 ### 3계층 구조 (UI/Worker/Core)
 
 ```
-┌─────────────────────────────────────────┐
-│         UI Layer (PyQt6)                 │
-│  - MainWindow (탭 시스템)                │
-│  - M4GLTab, NCGLTab, LYGLTab            │
-│  - 공통 컴포넌트 (ProgressDialog, etc)   │
-└──────────────┬──────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│         UI Layer (PyQt6)                          │
+│  - MainWindow (탭 시스템: 4개 탭)                 │
+│  - M4GLTab, NCGLTab, LYGLTab, CommonTab          │
+│  - 공통 컴포넌트 (ProgressDialog, etc)            │
+└──────────────┬───────────────────────────────────┘
                │ Signal/Slot
                ▼
-┌─────────────────────────────────────────┐
-│      Worker Layer (QThread)              │
-│  - M4GLWorker, NCGLWorker, LYGLWorker   │
-│  - 비동기 작업, 진행 상황 업데이트        │
-└──────────────┬──────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│      Worker Layer (QThread)                       │
+│  - M4GLWorker, NCGLWorker, LYGLWorker            │
+│  - CommonWorker (CSV 복원)                        │
+│  - 비동기 작업, 진행 상황 업데이트                 │
+└──────────────┬───────────────────────────────────┘
                │ progress_queue
                ▼
-┌─────────────────────────────────────────┐
-│       Core Layer (Business Logic)        │
-│  - core/m4gl/, core/ncgl/, core/lygl/   │
-│  - 데이터 처리, 검증, Excel I/O           │
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│       Core Layer (Business Logic)                 │
+│  - core/m4gl/, core/ncgl/, core/lygl/            │
+│  - core/common/ (CSV parser, validator, restore) │
+│  - 데이터 처리, 검증, Excel I/O                    │
+└──────────────────────────────────────────────────┘
 ```
 
 **핵심 원칙**:
@@ -137,6 +153,7 @@ sebastian/
 │   ├── m4gl_tab.py            # M4/GL 탭
 │   ├── ncgl_tab.py            # NC/GL 탭
 │   ├── lygl_tab.py            # LY/GL 탭
+│   ├── common_tab.py          # 공통 탭 (신규)
 │   │
 │   ├── common/                # 공통 컴포넌트
 │   │   ├── design_tokens.py  # 디자인 토큰
@@ -144,12 +161,13 @@ sebastian/
 │   │   ├── progress_dialog.py # 진행 Dialog
 │   │   └── log_viewer.py     # 로그 뷰어
 │   │
-│   ├── wizards/               # LY/GL Wizard들
+│   ├── wizards/               # Wizard 다이얼로그
 │   │   ├── merge_wizard.py
 │   │   ├── split_wizard.py
 │   │   ├── batch_wizard.py
 │   │   ├── diff_wizard.py
-│   │   └── status_check_wizard.py
+│   │   ├── status_check_wizard.py
+│   │   └── restore_csv_wizard.py  # CSV 복원 Wizard (신규)
 │   │
 │   └── styles/
 │       └── minimal.qss        # QSS 스타일시트
@@ -157,7 +175,8 @@ sebastian/
 ├── workers/                   # Worker Layer
 │   ├── m4gl_worker.py         # M4/GL Worker
 │   ├── ncgl_worker.py         # NC/GL Worker
-│   └── lygl_worker.py         # LY/GL Workers
+│   ├── lygl_worker.py         # LY/GL Workers
+│   └── common_worker.py       # 공통 Worker (신규)
 │
 ├── core/                      # Core Layer
 │   ├── m4gl/                  # M4/GL 비즈니스 로직
@@ -167,18 +186,29 @@ sebastian/
 │   ├── ncgl/                  # NC/GL 비즈니스 로직
 │   │   └── merger.py
 │   │
-│   └── lygl/                  # LY/GL 비즈니스 로직
-│       ├── merge.py
-│       ├── split.py
-│       ├── batch_merger.py
-│       ├── legacy_diff.py
-│       ├── status_check.py
-│       ├── validator.py
-│       ├── excel_format.py
-│       └── error_messages.py
+│   ├── lygl/                  # LY/GL 비즈니스 로직
+│   │   ├── merge.py
+│   │   ├── split.py
+│   │   ├── batch_merger.py
+│   │   ├── legacy_diff.py
+│   │   ├── status_check.py
+│   │   ├── validator.py
+│   │   ├── excel_format.py
+│   │   └── error_messages.py
+│   │
+│   └── common/                # 공통 도구 (신규)
+│       ├── csv_parser.py      # 상태 머신 CSV 파서
+│       ├── csv_validator.py   # CSV 구조 검증
+│       ├── csv_restore.py     # CSV 복원 로직
+│       └── __init__.py
 │
 └── tests/                     # 테스트
-    └── test_lygl_roundtrip.py # LY/GL Round-trip 테스트
+    ├── test_lygl/             # LY/GL 테스트 (37개)
+    └── test_common/           # 공통 도구 테스트 (24개, 신규)
+        ├── test_csv_parser.py
+        ├── test_csv_validator.py
+        ├── test_csv_restore.py
+        └── test_real_files.py
 ```
 
 ---
@@ -223,8 +253,9 @@ sebastian/
 ### 테스팅
 
 **pytest** (v7.0.0+)
-- 단위 테스트 (LY/GL 37개)
+- 단위 테스트: LY/GL 37개 + Common 24개 = **총 61개**
 - Round-trip 무결성 검증
+- 실제 파일 검증 (legacy/.csv test/)
 
 ---
 
@@ -412,27 +443,35 @@ pyinstaller build.spec --clean
 
 ## 테스트
 
-### LY/GL Round-trip 테스트 (37개)
+### 테스트 현황 (총 61개)
 
-**tests/test_lygl_roundtrip.py**:
-
+**LY/GL Round-trip 테스트** (37개):
 ```python
 def test_merge_split_roundtrip():
     """Merge → Split → Merge 무결성 검증"""
     # 1. 7개 언어 → 1개 병합
     merged_wb = merge(language_files)
-
     # 2. 1개 → 7개 분리
     split_files = split(merged_wb)
-
     # 3. 재병합
     remerged_wb = merge(split_files)
-
     # 4. 원본과 비교
     assert_dataframes_equal(merged_wb, remerged_wb)
 ```
 
-**결과**: 37개 테스트 모두 통과 ✅
+**Common 도구 테스트** (24개, 신규):
+- `test_csv_parser.py`: 상태 머신 파서 테스트 (13개)
+- `test_csv_validator.py`: CSV 검증 테스트 (5개)
+- `test_csv_restore.py`: 복원 로직 테스트 (4개)
+- `test_real_files.py`: 실제 파일 검증 (2개)
+
+**엣지 케이스**:
+- HTML 태그 내 이중 따옴표 escape
+- RFC 4180 위반 파일 처리
+- 빈 필드 (따옴표 있음/없음)
+- 멀티바이트 문자 (한글, 태국어, 러시아어)
+
+**결과**: 61개 테스트 모두 통과 ✅
 
 ### 레거시 출력 비교
 
@@ -476,5 +515,5 @@ M4/GL, NC/GL은 레거시 출력 파일과 100% 일치 검증:
 
 ---
 
-**문서 버전**: 1.0.0
-**최종 수정**: 2025-12-24
+**문서 버전**: 1.1.0
+**최종 수정**: 2025-12-26

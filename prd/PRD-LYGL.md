@@ -376,10 +376,19 @@ def apply_auto_complete(merged_data):
    - 불일치 KEY 수
    - 언어별 Status 분포
 
-4. Excel 리포트 생성
+4. 단어 수 계산 (조건부)
+   IF 불일치 KEY 수 == 0:
+       # 모든 언어 Status 일치 → 단어 수 계산
+       FOR EACH key WHERE Status IN ['번역필요', '수정']:
+           source_text = en_data[key]['Source']
+           word_count = count_korean_words(source_text)
+           total_words += word_count
+
+5. Excel 리포트 생성
    - Sheet1: Mismatches (불일치 KEY 목록)
    - Sheet2: Statistics (통계)
    - Sheet3: Language Summary (언어별 요약)
+   - (조건부) Korean Word Count 섹션
 ```
 
 ### 출력 형식
@@ -397,7 +406,20 @@ def apply_auto_complete(merged_data):
 | 일치 KEY 수 | 950 |
 | 불일치 KEY 수 | 50 |
 | 일치율 | 95% |
+
+(조건부) Korean Word Count 섹션:
+| Status | KEY 수 | 단어 수 |
+| 번역필요 | 30 | 2,450 |
+| 수정 | 15 | 780 |
+| 합계 | 45 | 3,230 |
 ```
+
+**단어 수 계산 규칙**:
+- 띄어쓰기 기준 단어 분리
+- 변수 `{0}`, `{1}` 등은 1개 단어로 계산
+- HTML 태그 제외 (예: `<b>텍스트</b>` → "텍스트" 1개)
+- **조건**: 불일치 KEY 수 == 0일 때만 계산
+- **대상 Status**: "번역필요", "수정"만 (완료/기존 제외)
 
 ---
 
@@ -583,5 +605,5 @@ def test_roundtrip(test_case):
 
 ---
 
-**문서 버전**: 1.0.0
-**최종 수정**: 2025-12-24
+**문서 버전**: 1.1.0
+**최종 수정**: 2025-12-26
