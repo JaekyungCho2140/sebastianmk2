@@ -18,6 +18,7 @@ from .common import *
 from .m4gl_tab import M4GLTab
 from .ncgl_tab import NCGLTab
 from .lygl_tab import LYGLTab
+from .common_tab import CommonTab
 
 
 class MainWindow(QMainWindow):
@@ -72,10 +73,12 @@ class MainWindow(QMainWindow):
         self.m4gl_tab = M4GLTab()
         self.ncgl_tab = NCGLTab()
         self.lygl_tab = LYGLTab()
+        self.common_tab = CommonTab()
 
         self.tab_widget.addTab(self.m4gl_tab, "M4/GL")
         self.tab_widget.addTab(self.ncgl_tab, "NC/GL")
         self.tab_widget.addTab(self.lygl_tab, "LY/GL")
+        self.tab_widget.addTab(self.common_tab, "공통")
 
         layout.addWidget(self.tab_widget)
 
@@ -115,6 +118,9 @@ class MainWindow(QMainWindow):
         # NCGL 탭
         self.ncgl_tab.execute_requested.connect(self._on_ncgl_execute)
 
+        # Common 탭
+        self.common_tab.restore_csv_requested.connect(self._on_restore_csv_requested)
+
     def _on_m4gl_execute(self, mode: str, folder_path: str):
         """M4GL 실행 완료"""
         self.update_status("완료", SUCCESS)
@@ -122,6 +128,55 @@ class MainWindow(QMainWindow):
     def _on_ncgl_execute(self, folder_path: str, date: str, milestone: str):
         """NCGL 실행 완료"""
         self.update_status("완료", SUCCESS)
+
+    def _on_restore_csv_requested(self):
+        """CSV 복원 요청 처리"""
+        from pathlib import Path
+        from PyQt6.QtWidgets import QDialog
+        from sebastian.ui.wizards.restore_csv_wizard import RestoreCSVWizard
+        from sebastian.workers.common_worker import CommonWorker
+        from sebastian.ui.common.progress_dialog import ProgressDialog
+
+        # Wizard 실행
+        wizard = RestoreCSVWizard(self)
+        if wizard.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        data = wizard.get_data()
+
+        # 출력 파일 경로 생성
+        export_filename = Path(data['export_path']).stem
+        output_path = Path(data['output_dir']) / f"{export_filename}_restored.csv"
+
+        # Worker 생성
+        worker = CommonWorker(
+            operation='restore_csv',
+            original_path=data['original_path'],
+            export_path=data['export_path'],
+            output_path=str(output_path)
+        )
+
+        # Progress Dialog
+        progress = ProgressDialog(self, "CSV 따옴표 복원")
+        worker.progress_updated.connect(progress.update_progress)
+        worker.status_updated.connect(lambda msg: progress.update_file(msg))
+        worker.completed.connect(lambda msg: self._on_worker_completed(progress, msg))
+        worker.error_occurred.connect(lambda msg: self._on_worker_error(progress, msg))
+
+        worker.start()
+        progress.exec()
+
+    def _on_worker_completed(self, progress_dialog, message: str):
+        """Worker 작업 완료"""
+        progress_dialog.close()
+        QMessageBox.information(self, "작업 완료", message)
+        self.update_status("작업 완료", SUCCESS)
+
+    def _on_worker_error(self, progress_dialog, message: str):
+        """Worker 작업 실패"""
+        progress_dialog.close()
+        QMessageBox.critical(self, "작업 실패", message)
+        self.update_status("작업 실패", ERROR)
 
     def _setup_menubar(self):
         """메뉴바 구성"""

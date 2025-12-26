@@ -36,6 +36,7 @@ desktop.ini
 # Temporary
 *.tmp
 *.temp
+nul
 
 # Output files (테스트 결과물)
 *_MIR4_MASTER_*.xlsx
