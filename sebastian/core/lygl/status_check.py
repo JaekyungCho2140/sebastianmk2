@@ -96,6 +96,104 @@ def calculate_status_statistics(
     return statistics
 
 
+def count_korean_words(text: str) -> int:
+    """
+    텍스트에서 단어 수 계산 (띄어쓰기 기준)
+    
+    Args:
+        text: 분석할 텍스트
+    
+    Returns:
+        단어 개수
+    
+    단어 정의:
+        - 띄어쓰기로 구분된 모든 토큰을 1개 단어로 간주
+        - 한국어, 영어, 숫자, 특수문자 혼합 모두 포함
+        - 빈 문자열이나 공백만 있는 토큰은 제외
+    
+    예시:
+        "안녕하세요 반갑습니다" → 2개
+        "Hello World" → 2개
+        "강타 피해 {10011}%" → 3개 (강타, 피해, {10011}%)
+        "ODIN" → 1개
+        "HP {10001}%" → 2개 (HP, {10001}%)
+        "공격력 증가 {10001}%" → 3개
+    """
+    if not text:
+        return 0
+    
+    # 띄어쓰기로 분할 후 빈 문자열 제외
+    words = str(text).split()
+    
+    # 공백만 있는 토큰 제외
+    words = [w for w in words if w.strip()]
+    
+    return len(words)
+
+
+def calculate_korean_word_count(
+    en_file_path: Path
+) -> Dict[str, int]:
+    """
+    EN 파일에서 '번역필요', '수정' 상태의 단어 수 계산
+    
+    Args:
+        en_file_path: EN 파일 경로
+    
+    Returns:
+        {
+            '번역필요': 1234,
+            '수정': 567,
+            '합계': 1801
+        }
+    
+    처리 로직:
+        1. EN 파일 읽기 (Source 컬럼 포함)
+        2. Status가 '번역필요' 또는 '수정'인 행 필터링
+        3. Source 컬럼(C열)에서 띄어쓰기 기준 단어 수 계산
+        4. Status별 합계 계산
+    
+    단어 정의:
+        - 띄어쓰기로 구분된 모든 토큰 (한국어, 영어, 변수 등)
+        - 예: "강타 피해 {10011}%" → 3개
+    
+    예외:
+        - 파일이 없으면 FileNotFoundError
+        - 파일 형식 오류 시 StatusCheckError
+    """
+    if not en_file_path.exists():
+        raise FileNotFoundError(f"EN 파일을 찾을 수 없습니다: {en_file_path}")
+    
+    try:
+        wb = load_workbook(en_file_path, data_only=True)
+        ws = wb.active
+        
+        # 초기화
+        word_counts = {
+            '번역필요': 0,
+            '수정': 0,
+            '합계': 0
+        }
+        
+        # 각 행 처리 (2행부터 데이터)
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if len(row) >= 5:
+                table, key, source, target, status = row[:5]
+                
+                # '번역필요' 또는 '수정' 상태만 처리
+                if status in ['번역필요', '수정'] and source:
+                    # Source 컬럼(C열)에서 한국어 단어 수 계산
+                    korean_words = count_korean_words(source)
+                    word_counts[status] += korean_words
+                    word_counts['합계'] += korean_words
+        
+        wb.close()
+        return word_counts
+    
+    except Exception as e:
+        raise StatusCheckError(f"한국어 단어 수 계산 실패: {en_file_path}\n오류: {str(e)}")
+
+
 def check_status_consistency(
     files: Dict[str, Path],
     progress_callback: Optional[Callable[[int, str], None]] = None
@@ -199,6 +297,7 @@ def check_status_consistency(
 def create_status_check_output(
     inconsistencies: List[Dict],
     statistics: Dict[str, Dict[str, int]],
+    korean_word_counts: Optional[Dict[str, int]],
     output_path: Path,
     progress_callback: Optional[Callable[[int, str], None]] = None
 ) -> None:
@@ -208,12 +307,14 @@ def create_status_check_output(
     Args:
         inconsistencies: check_status_consistency() 결과 - 불일치 키 목록
         statistics: calculate_status_statistics() 결과 - 언어별 통계
+        korean_word_counts: calculate_korean_word_count() 결과 - 한국어 단어 수 (조건부)
         output_path: 출력 파일 경로
         progress_callback: (percent, message) 진행 상황 콜백
 
     출력 형식:
         - Overview 시트만 생성 (언어별 시트 없음)
         - 상단: Summary 테이블 (언어별 Status 통계)
+        - 중단: Korean Word Count 섹션 (불일치 0개일 때만)
         - 하단: 불일치 키 목록
     """
     if progress_callback:
@@ -267,8 +368,67 @@ def create_status_check_output(
     # 2-4. 빈 행 추가
     current_row += 2
 
-    # 3. 불일치 키 목록 섹션
-    # 3-1. 섹션 타이틀
+    # 3. Korean Word Count 섹션 (조건부: 불일치 0개일 때만)
+    if len(inconsistencies) == 0 and korean_word_counts:
+        # 3-1. 타이틀
+        ws.merge_cells(f'A{current_row}:B{current_row}')
+        title_cell = ws.cell(current_row, 1)
+        title_cell.value = "Source 단어 수 (번역필요/수정)"
+        title_cell.font = Font(name="Calibri", size=14, bold=True)
+        title_cell.fill = PatternFill(start_color="C8E6C9", end_color="C8E6C9", fill_type="solid")
+        title_cell.alignment = Alignment(horizontal="center", vertical="center")
+        current_row += 1
+
+        # 3-2. 헤더
+        ws.cell(current_row, 1).value = "상태"
+        ws.cell(current_row, 2).value = "단어 수"
+        for col_idx in [1, 2]:
+            cell = ws.cell(current_row, col_idx)
+            cell.font = Font(name="Calibri", size=11, bold=True)
+            cell.fill = PatternFill(start_color="DBEEF4", end_color="DBEEF4", fill_type="solid")
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+        current_row += 1
+
+        # 3-3. 데이터
+        # 번역필요
+        ws.cell(current_row, 1).value = "번역필요"
+        ws.cell(current_row, 2).value = korean_word_counts['번역필요']
+        ws.cell(current_row, 2).number_format = '#,##0'  # 천 단위 구분자
+        current_row += 1
+
+        # 수정
+        ws.cell(current_row, 1).value = "수정"
+        ws.cell(current_row, 2).value = korean_word_counts['수정']
+        ws.cell(current_row, 2).number_format = '#,##0'
+        current_row += 1
+
+        # 합계
+        ws.cell(current_row, 1).value = "합계"
+        ws.cell(current_row, 1).font = Font(name="Calibri", size=11, bold=True)
+        ws.cell(current_row, 2).value = korean_word_counts['합계']
+        ws.cell(current_row, 2).number_format = '#,##0'
+        ws.cell(current_row, 2).font = Font(name="Calibri", size=11, bold=True)
+        current_row += 1
+
+        # 3-4. 중앙 정렬
+        for row_idx in range(current_row - 4, current_row):
+            for col_idx in [1, 2]:
+                ws.cell(row_idx, col_idx).alignment = Alignment(horizontal="center", vertical="center")
+
+        # 3-5. 설명 추가
+        current_row += 1
+        ws.merge_cells(f'A{current_row}:B{current_row}')
+        note_cell = ws.cell(current_row, 1)
+        note_cell.value = "※ 이 섹션은 모든 언어의 Status가 동일할 때만 표시됩니다."
+        note_cell.font = Font(name="Calibri", size=9, italic=True)
+        note_cell.alignment = Alignment(horizontal="left", vertical="center")
+        current_row += 1
+
+        # 3-6. 빈 행 추가
+        current_row += 1
+
+    # 4. 불일치 키 목록 섹션
+    # 4-1. 섹션 타이틀
     ws.merge_cells(f'A{current_row}:I{current_row}')
     section_cell = ws.cell(current_row, 1)
     section_cell.value = f"Status 불일치 키 목록 ({len(inconsistencies)}개)"
@@ -277,7 +437,7 @@ def create_status_check_output(
     section_cell.alignment = Alignment(horizontal="center", vertical="center")
     current_row += 1
 
-    # 3-2. 헤더
+    # 4-2. 헤더
     headers = ['#', 'KEY'] + VALID_LANGUAGES
     for col_idx, header in enumerate(headers, start=1):
         cell = ws.cell(current_row, col_idx)
@@ -291,7 +451,7 @@ def create_status_check_output(
     if progress_callback:
         progress_callback(94, "데이터 작성 중...")
 
-    # 3-3. 데이터 작성
+    # 4-3. 데이터 작성
     for idx, item in enumerate(inconsistencies, start=1):
         row_data = [idx, item['key']]
 
@@ -304,7 +464,7 @@ def create_status_check_output(
 
         current_row += 1
 
-    # 4. 데이터 스타일 적용
+    # 5. 데이터 스타일 적용
     if progress_callback:
         progress_callback(96, "스타일 적용 중...")
 
@@ -332,7 +492,7 @@ def create_status_check_output(
             elif cell.value != en_status:
                 cell.fill = yellow_fill
 
-    # 5. 컬럼 너비 설정
+    # 6. 컬럼 너비 설정
     ws.column_dimensions['A'].width = 6   # # 또는 언어
     ws.column_dimensions['B'].width = 50  # KEY 또는 기존
     ws.column_dimensions['C'].width = 12  # EN 또는 번역필요
@@ -343,11 +503,11 @@ def create_status_check_output(
     ws.column_dimensions['H'].width = 14  # PT-BR
     ws.column_dimensions['I'].width = 12  # RU
 
-    # 6. 자동 필터 (불일치 키 목록에만)
+    # 7. 자동 필터 (불일치 키 목록에만)
     if len(inconsistencies) > 0:
         ws.auto_filter.ref = f"A{header_row}:I{data_end_row}"
 
-    # 7. 파일 저장
+    # 8. 파일 저장
     if progress_callback:
         progress_callback(98, "파일 저장 중...")
 
@@ -380,7 +540,23 @@ def status_check(
     # Step 1: Status 비교 + 통계 계산
     inconsistencies, statistics = check_status_consistency(files, progress_callback)
 
-    # Step 2: 결과 출력 (통계 포함)
-    create_status_check_output(inconsistencies, statistics, output_path, progress_callback)
+    # Step 2: 한국어 단어 수 계산 (조건부: 불일치 0개일 때만)
+    korean_word_counts = None
+    if len(inconsistencies) == 0:
+        # 모든 Status가 동일 → 한국어 단어 수 계산
+        if progress_callback:
+            progress_callback(91, "한국어 단어 수 계산 중...")
+        
+        en_file_path = files['EN']
+        korean_word_counts = calculate_korean_word_count(en_file_path)
+
+    # Step 3: 결과 출력 (통계 + 한국어 단어 수 포함)
+    create_status_check_output(
+        inconsistencies,
+        statistics,
+        korean_word_counts,
+        output_path,
+        progress_callback
+    )
 
     return len(inconsistencies)

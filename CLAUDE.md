@@ -1,348 +1,532 @@
-# Sebastian Project - Legacy Migration Mode
+# Sebastian Project
 
 **프로젝트**: 3개 게임 현지화 도구 통합 (M4/GL, NC/GL, LY/GL)
-**접근 방식**: 레거시 코드 마이그레이션 (TDD 대신 복사 우선)
+**버전**: v0.2.0 (2025-12-24 UI/UX 개선 완료)
 
 ---
 
-## 🎯 핵심 원칙
+## 🎯 프로젝트 현황
 
-### 1. 복사 우선, 재구현 금지
-- 레거시 코드를 분석하여 재작성하지 않고 **정확히 복사**
-- "더 나은 방법"을 제안하지 않음
-- 알고리즘, 데이터 처리 로직, 서식 지정 등 **한 줄도 변경 금지**
+### 📊 코드베이스 규모
 
-### 2. 최소 변경
-- UI 의존성 제거를 위한 최소한의 변경만 허용
-- 허용되는 변경:
-  - ✅ 함수명 변경 (run_merge → merge_dialogue)
-  - ✅ 함수 시그니처 변경 (인자 순서, 타입 힌트)
-  - ✅ UI 임포트 제거 (tkinter, customtkinter)
-  - ✅ progress_queue 인자 추가
-- 금지되는 변경:
-  - ❌ 로직 최적화, 리팩토링
-  - ❌ 중복 제거 (DRY)
-  - ❌ 매직 넘버 상수화
-  - ❌ 변수명 변경
-
-### 3. 100% 동작 보장
-- 출력 파일이 레거시와 **완전히 일치**해야 함
-- pandas.DataFrame.equals() → True
-- openpyxl 서식 지정도 동일
-- LY/GL Round-trip 무결성 100%
-
-### 4. 검증 필수
-- 각 작업 완료 후 즉시 검증
-- diff로 변경사항 확인
-- 출력 파일 비교
-- 단위 테스트 실행 (LY/GL 37개)
+- **총 파일**: 40개 Python 파일 (~8,500 lines)
+- **Core 로직**: ~3,500 lines (비즈니스 로직)
+- **UI 코드**: ~2,800 lines (PyQt6 v2 디자인)
+- **Workers**: ~1,000 lines (비동기 처리)
+- **테스트**: ~1,000 lines (LY/GL 37개)
+- **디자인 시스템**: ~200 lines (design_tokens.py + minimal.qss)
 
 ---
 
-## 📚 작업 가이드 우선순위
+## 🏗️ 아키텍처 원칙
 
-이 프로젝트의 작업 지시는 다음 순서로 따릅니다:
+### 1. 3계층 구조 (UI/Worker/Core)
 
-1. **Phase 가이드** (가장 높은 우선순위)
-   - `prd/Sebastian-Phase1-Logic-Extraction.md`
-   - `prd/Sebastian-Phase2-UI-Development.md`
-   - `prd/Sebastian-Phase3-Integration.md`
-
-2. **작업 프로토콜**
-   - `prd/Sebastian-Claude-Code-Protocol.md`
-
-3. **Wireframe** (UI 작업 시)
-   - `prd/Sebastian-UI-Wireframes.md`
-
-4. **전체 개요**
-   - `prd/Sebastian-Migration-Guide.md`
-
----
-
-## 🚫 TDD 원칙 비활성화
-
-이 프로젝트에서는 다음 원칙을 **적용하지 않습니다**:
-
-### ❌ Red → Green → Refactor 사이클
-- 테스트 먼저 작성하지 않음
-- 레거시 코드가 이미 존재하고 동작함
-- 최소 구현 대신 **전체 로직 복사**
-
-### ❌ Tidy First (구조 개선)
-- 복사 전 구조 개선하지 않음
-- 함수 분리, 추출 금지
-- 레거시 구조 그대로 유지
-
-### ❌ DRY (중복 제거)
-- M4/GL과 NC/GL에 유사 코드 있어도 그대로 유지
-- 공통 유틸리티 추출 금지
-- 각 게임별 독립성 유지
-
-### ❌ Refactoring (리팩토링)
-- Green 단계에서도 리팩토링 금지
-- Phase 1-3에서는 코드 개선 전혀 하지 않음
-- Phase 5 (최적화)에서만 고려
-
----
-
-## 📦 Phase별 작업 방식
-
-### Phase 1: 로직 추출 (복사만)
-
-**목표**: `legacy/` → `sebastian/core/` 복사
-
-**작업 방식**:
 ```
-1. 정확한 라인 범위 복사 (예: 74-266행)
-2. 함수명만 변경 (run_merge → merge_dialogue)
-3. progress_queue 인자 추가
-4. diff 확인 → 예상대로만 변경되었는지 검증
-5. 수동 검증 → 핵심 로직 보존 확인
+┌─────────────────────────────────────────┐
+│         UI Layer (PyQt6 v2)              │
+│  - MainWindow (탭 시스템)                │
+│  - M4GLTab, NCGLTab, LYGLTab            │
+│  - 공통 컴포넌트 (ProgressDialog, etc)   │
+│  - 디자인 토큰 + QSS 스타일시트          │
+└──────────────┬──────────────────────────┘
+               │ Signal/Slot
+               ▼
+┌─────────────────────────────────────────┐
+│      Worker Layer (QThread)              │
+│  - M4GLWorker, NCGLWorker, LYGLWorker   │
+│  - 비동기 작업, 진행 상황 업데이트        │
+└──────────────┬──────────────────────────┘
+               │ progress_queue
+               ▼
+┌─────────────────────────────────────────┐
+│       Core Layer (Business Logic)        │
+│  - core/m4gl/, core/ncgl/, core/lygl/   │
+│  - 데이터 처리, 검증, Excel I/O           │
+└─────────────────────────────────────────┘
+```
+
+**핵심 규칙**:
+- ✅ UI는 Worker만 호출 (Core 직접 호출 금지)
+- ✅ Worker는 Core 로직 호출 후 Signal로 UI 업데이트
+- ✅ Core는 UI/Worker 의존성 없음 (순수 로직)
+
+### 2. UI/UX v2 디자인 시스템
+
+**디자인 철학**: Less is More, 명확한 계층, 충분한 여백
+
+**디자인 토큰 (`sebastian/ui/common/design_tokens.py`)**:
+```python
+class DesignTokens:
+    # 브랜드 색상 (통일)
+    PRIMARY = "#5E35B1"           # Deep Purple 600
+    PRIMARY_LIGHT = "#7E57C2"     # hover
+    PRIMARY_DARK = "#4527A0"      # pressed
+
+    # 중립 색상
+    BG_PRIMARY = "#FFFFFF"
+    TEXT_PRIMARY = "#1F2937"
+    BORDER = "#E5E7EB"
+
+    # 상태 색상
+    SUCCESS = "#10B981"
+    ERROR = "#EF4444"
+    WARNING = "#F59E0B"
+
+    # 간격 (8pt Grid)
+    SPACING_SM = 8
+    SPACING_MD = 16
+    SPACING_LG = 24
+    SPACING_XXL = 48
+```
+
+**QSS 스타일시트 (`sebastian/ui/styles/minimal.qss`)**:
+- Material Design 3.0 기반
+- 모든 위젯 스타일 중앙 관리
+- objectName 기반 스타일 변형
+
+### 3. Signal/Slot 패턴
+
+**표준 Signal 체계**:
+```python
+class SomeWorker(QThread):
+    # 필수 Signals
+    progress_updated = pyqtSignal(int)        # 0-100 진행률
+    status_updated = pyqtSignal(str)          # 상태 메시지
+    completed = pyqtSignal(str)               # 완료 메시지
+    error_occurred = pyqtSignal(str)          # 에러 메시지
 ```
 
 **금지 사항**:
-- ❌ 코드 이해하고 재작성
-- ❌ "더 좋은 방법" 제안
-- ❌ 타입 힌트 과도 추가
-- ❌ 주석 추가
+- ❌ Signal 체인 깊이 >3 (디버깅 어려움)
+- ❌ UI 스레드에서 긴 작업 (블로킹 발생)
 
-**검증**:
-```bash
-diff legacy/M4/Merged_M4.py sebastian/core/m4gl/dialogue.py
-# → 함수명, 인자 외 변경 없음 확인
-```
+### 4. Wizard 패턴 (복잡한 입력 흐름)
 
----
+**적용 대상**: LY/GL 전용 (Merge, Split, Batch, Diff, StatusCheck)
 
-### Phase 2: UI 개발 (신규 작성)
-
-**목표**: PyQt6 UI 신규 구축
-
-**작업 방식**:
-```
-1. wireframe 100% 준수
-2. 레거시 UI 참조 금지 (이미지 버튼, 절대 좌표 등)
-3. Signal/Slot 패턴
-4. 공통 컴포넌트 재사용
-```
-
-**TDD 적용 여부**: ⚔️ 선택적 허용
-- UI 로직에 한해 테스트 작성 가능
-- 하지만 wireframe 준수가 최우선
-
-**검증**:
-- wireframe 디자인 일치
-- 색상 코드 정확성
-- 레이아웃 반응성
-
----
-
-### Phase 3: 통합 (연결 + 검증)
-
-**목표**: UI ↔ Core 연결 및 레거시 동작 검증
-
-**작업 방식**:
-```
-1. QThread Worker 작성
-2. Signal/Slot 연결
-3. 실제 데이터로 테스트
-4. 출력 파일 비교 (레거시 vs 신규)
-```
-
-**TDD 적용 여부**: ✅ 부분 적용
-- 통합 테스트는 TDD 방식 가능
-- 하지만 레거시 로직은 변경 금지
-
-**검증**:
+**표준 구조**:
 ```python
-# tests/test_m4gl.py
-def test_dialogue_output():
-    df_legacy = pd.read_excel('legacy_output.xlsx')
-    df_new = pd.read_excel('new_output.xlsx')
-    assert df_legacy.equals(df_new)  # 100% 일치
+class SomeWizard(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setModal(True)  # 모달 Dialog
+        self._setup_ui()
+        self._connect_signals()
+
+    def get_data(self) -> Dict[str, Any]:
+        """선택된 데이터 반환"""
+        return {
+            'input_files': self.selected_files,
+            'output_path': self.output_path,
+        }
 ```
 
 ---
 
-## 🛠️ 작업 지시 템플릿 준수
+## 📝 코딩 표준
 
-모든 작업은 `prd/Sebastian-Claude-Code-Protocol.md`의 템플릿을 따릅니다.
+### 1. 타입 힌트 필수
 
-### Template 1: 파일 복사 (Phase 1)
-```
-"[소스 파일 경로]:[시작행]-[종료행]을
-[타겟 파일 경로]로 복사해줘.
+```python
+from typing import Dict, List, Optional, Tuple
+from pathlib import Path
+import pandas as pd
 
-다음 변경사항만 적용:
-1. 함수명: [old] → [new]
-2. 인자: [추가/제거]
+def merge_dialogue(
+    folder_path: str,
+    progress_queue: queue.Queue
+) -> Tuple[pd.DataFrame, str]:
+    """M4/GL DIALOGUE 3개 파일 병합
 
-나머지는 한 줄도 변경하지 마.
+    Args:
+        folder_path: 폴더 경로
+        progress_queue: 진행 상황 Queue
 
-특히 다음 항목은 절대 변경 금지:
-- [보존 항목 1]
-- [보존 항목 2]"
-```
+    Returns:
+        (병합 DataFrame, 출력 파일 경로)
 
-### Template 2: UI 구현 (Phase 2)
-```
-"[UI 파일 경로]를 작성해줘.
-wireframe의 '[섹션명]' 섹션을 참조하세요.
-
-요구사항:
-1. [요구사항 1]
-2. [요구사항 2]"
+    Raises:
+        ValidationError: 파일 수 부족 시
+        IOError: 파일 읽기/쓰기 실패 시
+    """
 ```
 
-### Template 3: 검증
+### 2. UI 스타일 작성 규칙 (v2)
+
+**QSS 우선 사용**:
+```python
+# ✅ 권장: QSS objectName 사용
+btn = QPushButton()
+btn.setObjectName("cardButton")  # QSS에서 스타일 정의
+
+# ❌ 비권장: 인라인 setStyleSheet()
+btn.setStyleSheet("background-color: #5E35B1;")
 ```
-"[검증 대상]을(를) 검증해줘.
 
-방법:
-1. diff 실행
-2. [검증 항목] 확인
+**동적 스타일 변경 (property 활용)**:
+```python
+# 선택 상태 변경
+btn.setProperty("selected", True)
+btn.style().unpolish(btn)  # 스타일 새로고침
+btn.style().polish(btn)
+```
 
-예상 결과:
-- [예상 1]
-- [예상 2]"
+### 3. 네이밍 컨벤션
+
+| 항목 | 패턴 | 예시 |
+|------|------|------|
+| 파일명 | snake_case | `merge_wizard.py` |
+| 클래스 | PascalCase + 접미사 | `M4GLWorker`, `MergeWizard` |
+| 함수 | snake_case | `merge_dialogue()` |
+| 상수 | UPPER_CASE | `MAX_FILES = 7` |
+| Private | `_` 접두사 | `_setup_ui()` |
+| objectName | camelCase | `cardButton`, `listItemButton` |
+
+---
+
+## 🚫 금지 사항
+
+### 1. 아키텍처 위반
+
+❌ **UI에서 Core 직접 호출**
+```python
+# 잘못된 예
+def on_button_click(self):
+    result = merge_dialogue(folder_path)  # ❌ UI 블로킹!
+```
+
+✅ **올바른 예**
+```python
+def on_button_click(self):
+    worker = M4GLWorker(folder_path)
+    worker.completed.connect(self._on_completed)
+    worker.start()  # ✅ 비동기 실행
+```
+
+### 2. UI 스타일 작성 방식
+
+❌ **비권장: 인라인 스타일**
+```python
+btn.setStyleSheet("background-color: #5E35B1; border-radius: 8px;")
+```
+
+✅ **권장: QSS objectName**
+```python
+btn.setObjectName("secondaryButton")  # minimal.qss에서 정의됨
 ```
 
 ---
 
-## ✅ 검증 체크리스트
+## 🎨 UI/UX 디자인 가이드
 
-### 각 작업 완료 후 즉시 수행
+### 탭별 UI 특징
 
-**Phase 1 (로직 추출)**:
-- [ ] diff 실행: 함수명, 인자 외 변경 없음
-- [ ] 수동 확인: 파일 읽기 파라미터 (sheet_name, header_row, skip_rows)
-- [ ] 수동 확인: 컬럼 매핑 딕셔너리 (정확한 인덱스)
-- [ ] 수동 확인: 서식 지정 (Font, PatternFill, Border 색상 코드)
-- [ ] 임포트 테스트: `from core.m4gl import merge_dialogue`
+**M4/GL 탭**:
+- 카드 스타일 버튼 (240×200px)
+- objectName: `cardButton`
+- 선택 시: property `selected=true`
+- 간격: 48px (카드 간)
 
-**Phase 2 (UI 개발)**:
-- [ ] wireframe 디자인 100% 준수
-- [ ] 색상 시스템 일치 (#4CAF50, #2196F3 등)
-- [ ] 타이포그래피 일치 (Pretendard, 맑은 고딕)
-- [ ] 간격 시스템 일치 (4px, 8px, 16px, 24px, 32px)
-- [ ] UI 실행 테스트
+**NC/GL 탭**:
+- 실시간 입력 검증
+- objectName: `validInput` / `invalidInput`
+- 검증 아이콘: ✓ (초록) / ✗ (빨강)
+- 입력 필드 높이: 48px
 
-**Phase 3 (통합)**:
-- [ ] Worker 정상 실행
-- [ ] ProgressDialog 업데이트
-- [ ] 출력 파일 생성
-- [ ] **레거시 vs 신규: 100% 일치** (가장 중요!)
+**LY/GL 탭**:
+- 수직 리스트 (64px × 5개)
+- objectName: `listItemButton`
+- 화살표 아이콘: `→`
+- 간격: 12px (버튼 간)
+- **확장성**: 새 기능 추가 시 동일 스타일로 하단에 추가
 
----
+### 공통 컴포넌트
 
-## 🚨 주의사항
+**ProgressDialog**:
+- 크기: 500 × 280px
+- 진행 바: 높이 8px, Primary 색상
+- 버튼: 취소, 최소화 (secondaryButton)
 
-### 절대 하지 말 것
-1. ❌ "이 코드는 비효율적입니다" → 레거시 그대로 유지
-2. ❌ "중복 코드를 제거하겠습니다" → 중복 유지
-3. ❌ "더 좋은 방법이 있습니다" → 제안하지 않음
-4. ❌ "리팩토링하겠습니다" → Phase 1-3에서는 금지
-5. ❌ "테스트를 먼저 작성하겠습니다" → 레거시 복사가 우선
-
-### 허용되는 작업
-1. ✅ "legacy/M4/Merged_M4.py:74-266을 복사했습니다"
-2. ✅ "함수명을 merge_dialogue()로 변경했습니다"
-3. ✅ "diff 결과, 예상대로 변경되었습니다"
-4. ✅ "wireframe 디자인대로 구현했습니다"
-5. ✅ "출력 파일이 레거시와 100% 일치합니다"
+**LogViewer**:
+- 펼침: 200px, 접힘: 32px
+- 탭: 로그, 에러, 경고
+- 최대 1000줄 (초과 시 자동 삭제)
 
 ---
 
-## 💬 질문 및 확인
+## 🔧 개발 가이드라인
 
-### 불명확한 경우 즉시 질문
-```
-"지시사항에 [항목]이 명시되지 않았습니다.
-[옵션 1] vs [옵션 2] 중 어떤 방식으로 진행할까요?"
+### 새 게임 추가 (예: XYZ/GL)
+
+**체크리스트**:
+
+1. **Core 로직** (`core/xyzgl/`)
+2. **Worker** (`workers/xyzgl_worker.py`)
+3. **탭** (`ui/xyzgl_tab.py`)
+4. **MainWindow 통합**
+5. **QSS 스타일 추가** (필요시)
+
+### 새 기능 추가
+
+**예시**: LY/GL에 "Validate" 기능 추가
+
+**체크리스트**:
+
+1. **Core 로직** (`core/lygl/validate.py`)
+2. **Worker** (`workers/lygl_worker.py` - ValidateWorker 추가)
+3. **Wizard** (`ui/wizards/validate_wizard.py`)
+4. **탭 통합** (`ui/lygl_tab.py` - 버튼 1개 추가)
+
+```python
+# ui/lygl_tab.py의 _setup_ui()
+functions = [
+    # ... 기존 5개 ...
+    ("Validate", "파일 검증", "컬럼 및 데이터 형식 검사", self.validate_requested.emit),
+]
 ```
 
-### 예상과 다른 경우 즉시 보고
-```
-"diff 결과, 예상과 다른 변경사항이 발견되었습니다:
-- [변경 항목]
+### UI 스타일 변경
 
-이것이 의도된 것인가요?"
+**1단계**: `sebastian/ui/common/design_tokens.py` 수정
+```python
+PRIMARY = "#YOUR_COLOR"  # 브랜드 색상 변경
 ```
 
-### 검증 실패 시 즉시 보고
+**2단계**: `sebastian/ui/styles/minimal.qss` 수정 (필요시)
+```css
+QPushButton {
+    border-radius: 12px;  /* 둥근 모서리 조정 */
+}
 ```
-"출력 파일 비교 결과, 다음 항목이 불일치합니다:
-- [불일치 항목]
 
-원인: [추정 원인]
-해결 방안: [제안]"
-```
+**3단계**: Python 코드 수정 **불필요** (QSS 재로드 자동)
 
 ---
 
-## 📊 성공 기준
+## 📚 참고 문서
 
-### Phase 1 완료 기준
-- [ ] `sebastian/core/` 구조 완성
-- [ ] 모든 함수 복사 완료
-- [ ] diff 검증: 함수명, 인자 외 변경 없음
-- [ ] 의존성 확인: pandas, openpyxl, xlsxwriter
+### PRD (Product Requirements Document)
 
-### Phase 2 완료 기준
-- [ ] `sebastian/ui/` 구조 완성
-- [ ] wireframe 100% 구현
-- [ ] 모든 탭 정상 표시
-- [ ] 공통 컴포넌트 재사용
+**위치**: `prd/` 디렉토리
 
-### Phase 3 완료 기준
-- [ ] 모든 기능 정상 동작
-- [ ] **M4/GL 출력: 레거시와 100% 일치** ⭐
-- [ ] **NC/GL 출력: 레거시와 100% 일치** ⭐
-- [ ] **LY/GL 출력: 레거시와 100% 일치** ⭐
-- [ ] **LY/GL Round-trip: 원본 복원 100%** ⭐
-- [ ] **LY/GL 37개 단위 테스트: 100% 통과** ⭐
+| 파일 | 용도 |
+|------|------|
+| **PRD-Overview.md** | 전체 개요, 아키텍처, 기술 스택 |
+| **PRD-M4GL.md** | M4/GL 상세 (DIALOGUE/STRING) |
+| **PRD-NCGL.md** | NC/GL 상세 (8개 언어, 병렬 처리) |
+| **PRD-LYGL.md** | LY/GL 상세 (5개 기능) |
+| **PRD-UI-Design.md** | UI/UX 디자인 시스템 |
+
+### 사용자 가이드
+
+**위치**: `docs/user-guide.html`
+- Confluence 게시용 HTML
+- PM/기획자 타겟 (비기술직)
+- 단계별 사용법, FAQ 포함
+
+### 레거시 참조
+
+**위치**: `legacy/` 디렉토리 (읽기 전용)
+- M4/Merged_M4.py: M4/GL 원본 로직
+- NC/NC 파일 통합.py: NC/GL 원본 로직
+- LY/LY_Table/: LY/GL 원본 로직
+
+**주의**: 레거시 코드는 읽기 전용! 수정 금지.
 
 ---
 
 ## 🔄 작업 흐름
 
-### 전형적인 작업 시퀀스
+### 일반적인 개발 프로세스
+
 ```
-1. Phase 가이드 확인
+1. 요구사항 분석
+   - PRD 확인
+   - 기존 패턴 참조 (3계층, Signal/Slot, Wizard)
+   - 정보 수집 후 → Serena의 think_about_collected_information 호출
    ↓
-2. Task의 "Claude Code 지시" 부분 확인
+2. 설계
+   - 아키텍처 결정 (3계층 준수)
+   - Signal/Slot 정의
+   - UI 디자인 (objectName 정의)
    ↓
-3. 정확히 지시대로 수행 (추론/변형 금지)
+3. 구현
+   - 코드 작성 전 → Serena의 think_about_task_adherence 호출
+   - Core 로직 작성 (타입 힌트 + Docstring)
+   - Worker 작성 (QThread)
+   - UI 작성 (objectName, QSS 활용)
+   - 작업 완료 시 → Serena의 think_about_whether_you_are_done 호출
    ↓
-4. 즉시 검증 (diff, 테스트, 출력 파일 비교)
+4. 테스트
+   - 단위 테스트 작성
+   - 통합 테스트
+   - 출력 파일 검증 (레거시 비교)
    ↓
-5. 검증 통과 → 다음 Task
-   검증 실패 → 보고 및 수정
+5. 검증
+   - pytest 실행
+   - 수동 UI 테스트
+   - 레거시 비교 (출력 파일)
+   ↓
+6. 문서화
+   - Docstring 업데이트
+   - PRD 업데이트 (필요 시)
 ```
 
-### 단계별 진행 (한 번에 하나만)
-```
-Task 1 완료 → 검증 → Task 2 완료 → 검증 → Task 3 완료 → ...
-```
+### Git 워크플로우
 
-**❌ 잘못된 방식**:
-```
-Task 1, 2, 3 한꺼번에 → 마지막에 검증 (❌ 에러 발견 시 되돌리기 어려움)
+```bash
+# 1. Feature 브랜치 생성
+git checkout -b feature/새기능명
+
+# 2. 개발 및 커밋
+git add .
+git commit -m "feat: 새 기능 설명"
+
+# 3. 테스트
+pytest tests/
+
+# 4. Push & PR
+git push origin feature/새기능명
 ```
 
 ---
 
-## 📅 다음 단계 안내
+## 💡 모범 사례 (Best Practices)
 
-새로운 세션에서 작업 시작 시:
+### 1. UI 컴포넌트 작성 (v2 스타일)
 
-1. **Phase 확인**: 현재 어느 Phase인지 확인
-2. **가이드 참조**: 해당 Phase 가이드 문서 열기
-3. **Task 수행**: "Claude Code 지시" 부분을 정확히 따름
-4. **검증**: 각 Task 완료 후 즉시 검증
-5. **다음 Task**: 검증 통과 시에만 다음 진행
+```python
+def _create_custom_button(self):
+    """커스텀 버튼 생성 - QSS 기반"""
+    btn = QPushButton("버튼 텍스트")
+    btn.setObjectName("customButton")  # QSS에서 정의
+    btn.setCursor(Qt.CursorShape.PointingHandCursor)
+    return btn
+```
+
+### 2. 동적 스타일 변경
+
+```python
+def _update_state(self, is_selected: bool):
+    """상태 변경 - property 활용"""
+    self.btn.setProperty("selected", is_selected)
+    self.btn.style().unpolish(self.btn)
+    self.btn.style().polish(self.btn)
+```
+
+### 3. Worker 작성 패턴
+
+```python
+class SomeWorker(QThread):
+    """작업 Worker
+
+    Signals:
+        progress_updated: 진행률 (0-100)
+        status_updated: 상태 메시지
+        completed: 완료 메시지
+        error_occurred: 에러 메시지
+    """
+
+    progress_updated = pyqtSignal(int)
+    status_updated = pyqtSignal(str)
+    completed = pyqtSignal(str)
+    error_occurred = pyqtSignal(str)
+
+    def run(self):
+        """QThread.run 오버라이드"""
+        try:
+            result = some_core_function()
+            self.completed.emit(f"완료: {result}")
+        except Exception as e:
+            self.error_occurred.emit(f"실패: {e}")
+```
 
 ---
 
-이 문서의 원칙을 엄격히 따라주세요.
-레거시 코드를 "이해"하려 하지 말고, **정확히 복사**하는 것이 핵심입니다.
+## 🔍 문제 해결 가이드
+
+### UI가 멈춤 (블로킹)
+
+**원인**: UI 스레드에서 긴 작업 실행
+**해결**: Worker로 분리
+
+```python
+# ✅ 올바른 예
+def on_click(self):
+    worker = ProcessWorker()
+    worker.start()  # 별도 스레드
+```
+
+### QSS 스타일이 적용 안 됨
+
+**원인 1**: objectName 누락
+**해결**: `setObjectName()` 호출
+
+**원인 2**: 스타일 새로고침 필요
+**해결**: `style().unpolish()` + `polish()` 호출
+
+### 출력 파일이 레거시와 다름
+
+**원인**: Core 로직 수정
+**해결**:
+1. git diff로 변경사항 확인
+2. 레거시 로직 복원
+3. 새 기능은 별도 함수로
+
+---
+
+## 📊 성공 기준
+
+### 코드 품질
+
+- [ ] 모든 함수에 타입 힌트
+- [ ] 모든 클래스/함수에 Docstring
+- [ ] 테스트 커버리지 ≥80%
+- [ ] QSS 기반 스타일 (인라인 최소화)
+
+### 아키텍처
+
+- [ ] 3계층 구조 준수 (UI/Worker/Core)
+- [ ] Signal/Slot 패턴 일관성
+- [ ] UI 스레드 블로킹 없음
+- [ ] 레거시 로직 보존
+
+### UI/UX
+
+- [ ] 디자인 토큰 일관성
+- [ ] Primary 색상 통일 (#5E35B1)
+- [ ] 8pt Grid System 준수
+- [ ] 접근성 (WCAG AA)
+
+### 검증
+
+- [ ] 출력 파일 = 레거시 출력 (기존 기능)
+- [ ] 단위 테스트 통과
+- [ ] UI 테스트 완료
+
+---
+
+## 📞 프로젝트 정보
+
+**저장소**: https://github.com/JaekyungCho2140/sebastianmk2
+**최신 릴리즈**: v0.2.0 (2025-12-24, UI/UX v2)
+**라이선스**: (명시 필요)
+**개발자**: Jaekyung Cho
+
+**문서**:
+- PRD: `prd/` 디렉토리 (5개)
+- 사용자 가이드: `docs/user-guide.html`
+- 레거시 백업: `prd_backup/` 디렉토리
+
+**로깅 시스템**:
+- **로그 위치**: `logs/sebastian.log` (현재 월)
+- **로테이션**: 매월 1일 자정 (sebastian.log.YYYYMM)
+- **보관 정책**: 무제한 (삭제 안 함)
+- **형식**: `시간 - 모듈 - 레벨 - 메시지`
+- **설정**: `sebastian/main.py` - `setup_logging()`
+
+---
+
+**이 문서는 Sebastian v0.2.0 (UI/UX) 기준으로 작성되었습니다.**
+**PRD 및 사용자 가이드를 참고하여 프로젝트를 확장해주세요!**
